@@ -1,0 +1,20 @@
+{
+  "name": "ace-naps-loops",
+  "version": "0.0.1",
+  "type": "module",
+  "packageManager": "pnpm@10.24.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "check": "node scripts/check-clock.mjs && node scripts/check-sprites.mjs"
+  },
+  "dependencies": {
+    "phaser": "4.2.1"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vite": "^8.2.1"
+  }
+}
