@@ -8,7 +8,7 @@
     "rightForest": { "x": 424, "y": 0, "w": 56, "h": 270 },
     "house": { "x": 288, "y": 2, "w": 160, "h": 160 },
     "roof": { "x": 288, "y": 2, "w": 160, "h": 22 },
-    "ace": { "x": 188, "y": 222, "w": 26, "h": 20 },
+    "ace": { "x": 188, "y": 222, "w": 40, "h": 26 },
     "kevinStart": { "x": 148, "y": 188 }
   },
   "waypoints": [
@@ -22,7 +22,7 @@
       { "id": "pumpkin", "label": "P", "color": "#e67a22", "x": 364, "y": 176, "w": 16, "h": 14 },
       { "id": "mushroom", "label": "M", "color": "#c0392b", "x": 78, "y": 168, "w": 12, "h": 12 },
       { "id": "scarecrow", "label": "SC", "color": "#c4a46a", "x": 176, "y": 96, "w": 16, "h": 26 },
-      { "id": "ball", "label": "TB", "color": "#f1c40f", "x": 210, "y": 230, "w": 8, "h": 8 },
+      { "id": "ball", "label": "TB", "color": "#f1c40f", "x": 228, "y": 232, "w": 8, "h": 8 },
       { "id": "letter", "label": "LT", "color": "#f4f1e8", "x": 396, "y": 154, "w": 12, "h": 8 }
     ],
     "lantern": { "start": 240, "end": 540, "x": 392, "y": 148, "w": 14, "h": 40 },

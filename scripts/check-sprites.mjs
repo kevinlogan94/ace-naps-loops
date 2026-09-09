@@ -18,7 +18,8 @@ const checks = [
   ['public/assets/custom/witch-walk.png', 256, 256],
   ['public/assets/custom/trees.png', 256, 288],
   ['public/assets/custom/leaves.png', 64, 16],
-  ['public/assets/custom/ace-nap.png', 48, 48],
+  ['public/assets/custom/ace-nap.png', 176, 38],
+  ['public/assets/custom/hunt.png', 160, 32],
 ];
 
 for (const [path, w, h] of checks) {

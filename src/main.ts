@@ -13,10 +13,10 @@ new Phaser.Game({
   height: 270,
   backgroundColor: '#000000',
   pixelArt: true,
-  roundPixels: true,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    snap: { width: 480, height: 270 },
   },
   scene: [BootScene, FallYardScene],
   callbacks: {

@@ -38,8 +38,6 @@ export class FallYardScene extends Phaser.Scene {
   private speed = 1;
   private video = 'fall-yard';
   private clock!: Phaser.GameObjects.Text;
-  private ace!: Phaser.GameObjects.Image;
-  private aceScale = 1;
   private lantern!: Phaser.GameObjects.Sprite;
   private crow!: Phaser.GameObjects.Image;
   private witch!: LayeredActor;
@@ -102,10 +100,8 @@ export class FallYardScene extends Phaser.Scene {
     this.add.image(H.always[3].x, H.always[3].y, 'hunt', 3).setOrigin(0.5, 1).setDepth(4);
     this.add.image(H.always[4].x, H.always[4].y, 'hunt', 4).setOrigin(0.5, 1).setDepth(4);
 
-    this.add.ellipse(L.ace.x, L.ace.y - 1, 16, 5, 0x2a1a10, 0.22).setDepth(L.ace.y - 1);
-    this.ace = this.add.image(L.ace.x, L.ace.y, 'ace').setOrigin(0.5, 1).setDepth(L.ace.y);
-    this.aceScale = 28 / this.ace.width;
-    this.ace.setScale(this.aceScale);
+    this.add.sprite(L.ace.x, L.ace.y, 'ace', 0).setOrigin(0.5, 1).setDepth(L.ace.y).play('ace-nap');
+    this.add.ellipse(L.ace.x, L.ace.y - 2, L.ace.w, L.ace.h * 0.3, 0x2a1a10, 0.22).setDepth(L.ace.y - 1);
     this.lantern = this.add
       .sprite(H.lantern.x, H.lantern.y, 'lantern', 0)
       .setOrigin(0.5, 1)
@@ -137,8 +133,6 @@ export class FallYardScene extends Phaser.Scene {
     this.storyMs = wrap(this.storyMs + delta * this.speed);
     const H = data.hunt;
     const now = this.storyMs;
-
-    this.ace.setScale(this.aceScale, this.aceScale * (1 + 0.03 * Math.sin(_t / 900)));
 
     for (let i = 0; i < this.leaves.length; i++) {
       const leaf = this.leaves[i];

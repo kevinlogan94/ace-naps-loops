@@ -26,7 +26,7 @@ Characters are custom pixel sheets, not LPC.
 | `public/assets/custom/kevin-walk.png` | Kevin walk, 4 dirs x 4 frames. |
 | `public/assets/custom/kevin-sit.png` | Kevin sit, 4 dirs x 3 frames. |
 | `public/assets/custom/witch-walk.png` | Witch walk, 4 dirs x 4 frames. |
-| `public/assets/custom/ace-nap.png` | Ace, white/tan, blue collar, opaque pixels. |
+| `public/assets/custom/ace-nap.png` | Ace napping, white/tan, blue collar, 4 frames (breathing + z). |
 | `public/assets/custom/trees.png` | Autumn trees with chunky canopies. |
 | `public/assets/custom/hunt.png` | Pumpkin, red mushroom, scarecrow, tennis ball, letter. |
 | `public/assets/custom/leaves.png` | Falling autumn leaves. |
