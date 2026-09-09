@@ -107,16 +107,20 @@ def paint_back_glasses(im: Image.Image, cols: int, cw: int, ch: int) -> None:
     """Stamp a tiny black rectangle at each ear on sit back-view frames."""
     px = im.load()
     for c in range(cols):
-        x0, y0 = c * cw, 0
+        x0 = c * cw
+        box = im.crop((x0, 0, x0 + cw, ch)).split()[-1].getbbox()
+        if not box:
+            continue
+        y0 = box[1]  # ear line sits ~11px below the top of the head
         xs: list[int] = []
-        for y in range(y0 + 13, y0 + 18):
+        for y in range(y0 + 11, y0 + 16):
             for x in range(x0 + 4, x0 + cw - 4):
                 r, g, b, a = px[x, y]
                 if a > 200 and r + g + b > 80:
                     xs.append(x)
         if not xs:
             continue
-        left, right, ey = min(xs), max(xs), y0 + 14
+        left, right, ey = min(xs), max(xs), y0 + 12
         for dx in range(4):
             for dy in range(2):
                 px[max(x0, left - 1 + dx), ey + dy] = (8, 6, 6, 255)
@@ -135,30 +139,28 @@ def harden_pixels(im: Image.Image, step: int = 16) -> Image.Image:
     return im
 
 
-def bbox(cell: Image.Image) -> Optional[Tuple[int, int, int, int]]:
-    alpha = cell.split()[-1]
-    box = alpha.getbbox()
-    return box
+def _runs(mask: list) -> list:
+    """Index ranges where mask is True."""
+    runs, start = [], None
+    for i, v in enumerate(mask + [False]):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            runs.append((start, i))
+            start = None
+    return runs
 
 
-def fit_cell(cell: Image.Image, tw: int, th: int, scrub: bool = False) -> Image.Image:
-    box = bbox(cell)
-    out = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
-    if not box:
-        return out
-    cropped = cell.crop(box)
-    # Leave a 2px pad; keep feet on the floor.
-    max_w, max_h = tw - 4, th - 4
-    cw, ch = cropped.size
-    scale = min(max_w / cw, max_h / ch)
-    nw, nh = max(1, int(cw * scale)), max(1, int(ch * scale))
-    resized = cropped.resize((nw, nh), Image.Resampling.NEAREST)
-    x = (tw - nw) // 2
-    y = th - 2 - nh
-    out.paste(resized, (x, y), resized)
-    if scrub:
-        scrub_fringe(out)
-    return out
+def cells(im: Image.Image) -> list:
+    """Split a keyed sheet on fully transparent gaps into rows of (l, t, r, b) boxes.
+    Generated grids drift off their nominal pitch, so slicing on a fixed grid grabs the neighbour's head."""
+    a = im.split()[-1]
+    w, h = a.size
+    rows = _runs([a.crop((0, y, w, y + 1)).getbbox() is not None for y in range(h)])
+    return [
+        [(l, t, r, b) for l, r in _runs([a.crop((x, t, x + 1, b)).getbbox() is not None for x in range(w)])]
+        for t, b in rows
+    ]
 
 
 def sheet(
@@ -174,6 +176,7 @@ def sheet(
     foot_shadow: bool = False,
     rust_pink: bool = False,
     clean_edges: bool = False,
+    fit_h: Optional[int] = None,
 ) -> None:
     keyed = key_rgba(Image.open(src))
     if foot_shadow:
@@ -184,18 +187,25 @@ def sheet(
         keyed = sage_shirt(keyed)
     if clean_edges:
         keyed = scrub_fringe(keyed)
-    sw, sh = keyed.size
-    cell_w, cell_h = sw // cols, sh // rows
+    grid = cells(keyed)
+    assert [len(r) for r in grid] == [cols] * rows, f"{src.name}: found {[len(r) for r in grid]}"
+    # One scale for the whole sheet: frames do not pulse and every pose keeps the same head size.
+    # 2px pad; fit_h caps the tallest figure (seated poses are shorter than standing ones).
+    max_h = fit_h or ch - 4
+    scale = min(min((cw - 4) / (r - l), max_h / (b - t)) for row in grid for l, t, r, b in row)
     order = row_order or list(range(rows))
     flips = set(flip_rows or [])
     out = Image.new("RGBA", (cols * cw, rows * ch), (0, 0, 0, 0))
     for dest_r, src_r in enumerate(order):
-        for c in range(cols):
-            cell = keyed.crop((c * cell_w, src_r * cell_h, (c + 1) * cell_w, (src_r + 1) * cell_h))
-            fitted = fit_cell(cell, cw, ch, scrub=clean_edges)
+        for c, box in enumerate(grid[src_r]):
+            cell = keyed.crop(box)
+            nw, nh = max(1, round(cell.width * scale)), max(1, round(cell.height * scale))
+            fitted = cell.resize((nw, nh), Image.Resampling.NEAREST)
             if dest_r in flips:
                 fitted = fitted.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-            out.paste(fitted, (c * cw, dest_r * ch))
+            out.paste(fitted, (c * cw + (cw - nw) // 2, dest_r * ch + ch - 2 - nh), fitted)
+    if clean_edges:
+        scrub_fringe(out)
     dest.parent.mkdir(parents=True, exist_ok=True)
     out.save(dest)
     print(dest.name, out.size)
@@ -355,7 +365,8 @@ def main() -> None:
         foot_shadow=True,
         clean_edges=True,
     )
-    # v2 sit: row 1 is mixed; use right row for both sides and flip dest left.
+    # v2 sit: raw row 1 is mixed; raw row 3 faces left, so reuse it flipped for right.
+    # Seated Kevin tops out at 46px so his head stays the same size as the 60px walk frames.
     sheet(
         RAW / "kevin-sit-sheet-v2.png",
         3,
@@ -364,10 +375,11 @@ def main() -> None:
         64,
         OUT / "kevin-sit.png",
         row_order=[0, 3, 2, 3],
-        flip_rows=[1],
+        flip_rows=[3],
         shirt_sage=True,
         foot_shadow=True,
         clean_edges=True,
+        fit_h=46,
     )
     # Front sit last frame has a smashed lens; reuse the clean front frame.
     sit = Image.open(OUT / "kevin-sit.png")
