@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import data from '../../data/videos/fall-yard.json';
 import { formatTime, isActive, wrap } from '../../systems/storyClock';
-import { stepToward } from '../../systems/walker';
 import { LayeredActor } from '../../systems/layeredActor';
 
 type WindowSec = { start: number; end: number };
@@ -41,11 +40,7 @@ export class FallYardScene extends Phaser.Scene {
   private lantern!: Phaser.GameObjects.Sprite;
   private crow!: Phaser.GameObjects.Image;
   private witch!: LayeredActor;
-  private kevin!: LayeredActor;
   private leaves: Phaser.GameObjects.Sprite[] = [];
-  private wpI = 0;
-  private kevinPos = { x: 0, y: 0 };
-  private sitting = false;
 
   constructor() {
     super('FallYard');
@@ -113,9 +108,6 @@ export class FallYardScene extends Phaser.Scene {
     this.witch = new LayeredActor(this, H.witch.x, H.witch.y, 'witch-walk', 7);
     this.witch.view.setAlpha(0);
 
-    this.kevinPos = { x: L.kevinStart.x, y: L.kevinStart.y };
-    this.kevin = new LayeredActor(this, this.kevinPos.x, this.kevinPos.y, 'kevin-walk', 8);
-
     for (let i = 0; i < 10; i++) {
       this.leaves.push(
         this.add.sprite(100 + i * 34, (i * 41) % 270, 'leaves', i % 4).setDepth(9).setAlpha(0.9),
@@ -157,30 +149,6 @@ export class FallYardScene extends Phaser.Scene {
       this.witch.face(0, 1);
       this.witch.walk(vis, true);
     }
-
-    const wantSit = isActive(now, H.sit.start * 1000, H.sit.end * 1000);
-    const acePt = data.waypoints[1];
-    const prev = { x: this.kevinPos.x, y: this.kevinPos.y };
-    if (wantSit) {
-      if (!this.sitting) {
-        this.kevin.setKey('kevin-sit', 7);
-        this.sitting = true;
-      }
-      stepToward(this.kevinPos, acePt, 80, vis);
-      this.kevin.sit();
-    } else {
-      if (this.sitting) {
-        this.kevin.setKey('kevin-walk', 8);
-        this.sitting = false;
-      }
-      if (stepToward(this.kevinPos, data.waypoints[this.wpI], 36, vis)) {
-        this.wpI = (this.wpI + 1) % data.waypoints.length;
-      }
-      this.kevin.face(this.kevinPos.x - prev.x, this.kevinPos.y - prev.y);
-      this.kevin.walk(vis, true);
-    }
-    this.kevin.view.setPosition(this.kevinPos.x, this.kevinPos.y);
-    this.kevin.view.setDepth(this.kevinPos.y);
 
     this.clock.setText(`${this.video} ${formatTime(now)} x${this.speed}`);
   }

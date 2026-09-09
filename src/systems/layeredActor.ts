@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 
-/** Custom sheets: 4 walk frames, rows up / left / down / right. */
-const WALK_COLS = 4;
-const SIT_COLS = 3;
+/** Rows are up / left / down / right. */
+const CYCLE_SEC = 0.5;
 
 export class LayeredActor {
   readonly view: Phaser.GameObjects.Container;
@@ -10,13 +9,16 @@ export class LayeredActor {
   private dir = 2;
   private frame = 0;
   private acc = 0;
-  constructor(scene: Phaser.Scene, x: number, y: number, key: string, depth: number) {
-    this.sprite = scene.add.sprite(0, 0, key, WALK_COLS * 2);
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    key: string,
+    depth: number,
+    private readonly walkCols = 4,
+  ) {
+    this.sprite = scene.add.sprite(0, 0, key, walkCols * 2);
     this.view = scene.add.container(x, y, [this.sprite]).setDepth(depth);
-  }
-
-  setKey(key: string, startFrame: number): void {
-    this.sprite.setTexture(key, startFrame);
   }
 
   face(dx: number, dy: number): void {
@@ -27,19 +29,15 @@ export class LayeredActor {
   walk(dt: number, moving: boolean): void {
     if (!moving) {
       this.frame = 0;
-      this.paint(this.dir * WALK_COLS);
+      this.paint(this.dir * this.walkCols);
       return;
     }
     this.acc += dt;
-    if (this.acc > 0.12) {
+    if (this.acc > CYCLE_SEC / this.walkCols) {
       this.acc = 0;
-      this.frame = (this.frame + 1) % WALK_COLS;
+      this.frame = (this.frame + 1) % this.walkCols;
     }
-    this.paint(this.dir * WALK_COLS + this.frame);
-  }
-
-  sit(): void {
-    this.paint(this.dir * SIT_COLS + 1);
+    this.paint(this.dir * this.walkCols + this.frame);
   }
 
   private paint(frame: number): void {

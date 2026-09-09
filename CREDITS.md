@@ -17,14 +17,12 @@ Repo: https://github.com/ElizaWy/LPC (commit `f07f7f5892e67c932c68f70bb04472f2c6
 | Food, baskets, boxes, outdoor lighting | see Objects credits | OGA-BY 3.0 |
 | Water ripple FX | see FX/Credits.txt | OGA-BY 3.0 |
 
-Characters are custom pixel sheets, not LPC.
+Witch, Ace, and props are custom pixel sheets.
 
 ## Custom
 
 | Asset | Notes |
 | --- | --- |
-| `public/assets/custom/kevin-walk.png` | Kevin walk, 4 dirs x 4 frames. |
-| `public/assets/custom/kevin-sit.png` | Kevin sit, 4 dirs x 3 frames. |
 | `public/assets/custom/witch-walk.png` | Witch walk, 4 dirs x 4 frames. |
 | `public/assets/custom/ace-nap.png` | Ace napping, white/tan, blue collar, 4 frames (breathing + z). |
 | `public/assets/custom/trees.png` | Autumn trees with chunky canopies. |

@@ -13,8 +13,6 @@ function assert(ok, msg) {
 }
 
 const checks = [
-  ['public/assets/custom/kevin-walk.png', 256, 256],
-  ['public/assets/custom/kevin-sit.png', 192, 256],
   ['public/assets/custom/witch-walk.png', 256, 256],
   ['public/assets/custom/trees.png', 256, 288],
   ['public/assets/custom/leaves.png', 64, 16],

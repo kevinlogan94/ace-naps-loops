@@ -39,7 +39,7 @@ Record at `speed=1`. Higher speed is for previewing timed events, not for the ca
 
 ## Art
 
-Autumn yard uses ElizaWy terrain, house, and wildflowers. Kevin, Ace, the witch, trees, and falling leaves are custom pixel sheets.
+Autumn yard uses ElizaWy terrain, house, and wildflowers. Ace, the witch, trees, and falling leaves are custom pixel sheets.
 
 ## Ace
 

@@ -103,30 +103,6 @@ def rust_pink_canopy(im: Image.Image) -> Image.Image:
     return im
 
 
-def paint_back_glasses(im: Image.Image, cols: int, cw: int, ch: int) -> None:
-    """Stamp a tiny black rectangle at each ear on sit back-view frames."""
-    px = im.load()
-    for c in range(cols):
-        x0 = c * cw
-        box = im.crop((x0, 0, x0 + cw, ch)).split()[-1].getbbox()
-        if not box:
-            continue
-        y0 = box[1]  # ear line sits ~11px below the top of the head
-        xs: list[int] = []
-        for y in range(y0 + 11, y0 + 16):
-            for x in range(x0 + 4, x0 + cw - 4):
-                r, g, b, a = px[x, y]
-                if a > 200 and r + g + b > 80:
-                    xs.append(x)
-        if not xs:
-            continue
-        left, right, ey = min(xs), max(xs), y0 + 12
-        for dx in range(4):
-            for dy in range(2):
-                px[max(x0, left - 1 + dx), ey + dy] = (8, 6, 6, 255)
-                px[min(x0 + cw - 1, right - 2 + dx), ey + dy] = (8, 6, 6, 255)
-
-
 def harden_pixels(im: Image.Image, step: int = 16) -> Image.Image:
     px = im.load()
     w, h = im.size
@@ -163,6 +139,54 @@ def cells(im: Image.Image) -> list:
     ]
 
 
+def keyed_grid(
+    src: Path,
+    cols: int,
+    rows: int,
+    shirt_sage: bool = False,
+    foot_shadow: bool = False,
+    rust_pink: bool = False,
+    clean_edges: bool = False,
+) -> list:
+    """Key + filter a raw sheet and return rows of cropped cell images."""
+    keyed = key_rgba(Image.open(src))
+    if foot_shadow:
+        keyed = drop_magenta_shadow(keyed)
+    if rust_pink:
+        keyed = rust_pink_canopy(keyed)
+    if shirt_sage:
+        keyed = sage_shirt(keyed)
+    if clean_edges:
+        keyed = scrub_fringe(keyed)
+    grid = cells(keyed)
+    assert [len(r) for r in grid] == [cols] * rows, f"{src.name}: found {[len(r) for r in grid]}"
+    return [[keyed.crop(box) for box in row] for row in grid]
+
+
+def fit_scale(rows: list, cw: int, ch: int, fit_h: Optional[int] = None) -> float:
+    """One scale for a whole source: frames do not pulse and every pose keeps the same head size.
+    2px pad; fit_h caps the tallest figure (seated poses are shorter than standing ones)."""
+    max_h = fit_h or ch - 4
+    return min(min((cw - 4) / c.width, max_h / c.height) for row in rows for c in row)
+
+
+def paste_row(out: Image.Image, row: list, dest_r: int, scale: float, cw: int, ch: int, flip: bool = False) -> None:
+    for c, cell in enumerate(row):
+        nw, nh = max(1, round(cell.width * scale)), max(1, round(cell.height * scale))
+        fitted = cell.resize((nw, nh), Image.Resampling.NEAREST)
+        if flip:
+            fitted = fitted.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        out.paste(fitted, (c * cw + (cw - nw) // 2, dest_r * ch + ch - 2 - nh), fitted)
+
+
+def save(out: Image.Image, dest: Path, clean_edges: bool = False) -> None:
+    if clean_edges:
+        scrub_fringe(out)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    out.save(dest)
+    print(dest.name, out.size)
+
+
 def sheet(
     src: Path,
     cols: int,
@@ -178,37 +202,13 @@ def sheet(
     clean_edges: bool = False,
     fit_h: Optional[int] = None,
 ) -> None:
-    keyed = key_rgba(Image.open(src))
-    if foot_shadow:
-        keyed = drop_magenta_shadow(keyed)
-    if rust_pink:
-        keyed = rust_pink_canopy(keyed)
-    if shirt_sage:
-        keyed = sage_shirt(keyed)
-    if clean_edges:
-        keyed = scrub_fringe(keyed)
-    grid = cells(keyed)
-    assert [len(r) for r in grid] == [cols] * rows, f"{src.name}: found {[len(r) for r in grid]}"
-    # One scale for the whole sheet: frames do not pulse and every pose keeps the same head size.
-    # 2px pad; fit_h caps the tallest figure (seated poses are shorter than standing ones).
-    max_h = fit_h or ch - 4
-    scale = min(min((cw - 4) / (r - l), max_h / (b - t)) for row in grid for l, t, r, b in row)
-    order = row_order or list(range(rows))
+    grid = keyed_grid(src, cols, rows, shirt_sage, foot_shadow, rust_pink, clean_edges)
+    scale = fit_scale(grid, cw, ch, fit_h)
     flips = set(flip_rows or [])
     out = Image.new("RGBA", (cols * cw, rows * ch), (0, 0, 0, 0))
-    for dest_r, src_r in enumerate(order):
-        for c, box in enumerate(grid[src_r]):
-            cell = keyed.crop(box)
-            nw, nh = max(1, round(cell.width * scale)), max(1, round(cell.height * scale))
-            fitted = cell.resize((nw, nh), Image.Resampling.NEAREST)
-            if dest_r in flips:
-                fitted = fitted.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-            out.paste(fitted, (c * cw + (cw - nw) // 2, dest_r * ch + ch - 2 - nh), fitted)
-    if clean_edges:
-        scrub_fringe(out)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    out.save(dest)
-    print(dest.name, out.size)
+    for dest_r, src_r in enumerate(row_order or list(range(rows))):
+        paste_row(out, grid[src_r], dest_r, scale, cw, ch, dest_r in flips)
+    save(out, dest, clean_edges)
 
 
 def drop_lonely(im: Image.Image) -> Image.Image:
@@ -232,7 +232,7 @@ def drop_lonely(im: Image.Image) -> Image.Image:
     return im
 
 
-# Ace curled up asleep, head on the right toward Kevin's sit spot. Built from
+# Ace curled up asleep, head on the right. Built from
 # ellipses with a hard ink outline per part, like draw-hunt.mjs. Frames:
 # rest, inhale, inhale, rest; a z floats up from his nose across frames 1-3.
 Pix = dict
@@ -353,39 +353,6 @@ def ace(dest: Path) -> None:
     print(dest.name, im.size)
 
 def main() -> None:
-    # v3 walk is already up / left / down / right.
-    sheet(
-        RAW / "kevin-walk-sheet-v3.png",
-        4,
-        4,
-        64,
-        64,
-        OUT / "kevin-walk.png",
-        shirt_sage=True,
-        foot_shadow=True,
-        clean_edges=True,
-    )
-    # v2 sit: raw row 1 is mixed; raw row 3 faces left, so reuse it flipped for right.
-    # Seated Kevin tops out at 46px so his head stays the same size as the 60px walk frames.
-    sheet(
-        RAW / "kevin-sit-sheet-v2.png",
-        3,
-        4,
-        64,
-        64,
-        OUT / "kevin-sit.png",
-        row_order=[0, 3, 2, 3],
-        flip_rows=[3],
-        shirt_sage=True,
-        foot_shadow=True,
-        clean_edges=True,
-        fit_h=46,
-    )
-    # Front sit last frame has a smashed lens; reuse the clean front frame.
-    sit = Image.open(OUT / "kevin-sit.png")
-    sit.paste(sit.crop((0, 128, 64, 192)), (128, 128))
-    paint_back_glasses(sit, 3, 64, 64)
-    sit.save(OUT / "kevin-sit.png")
     sheet(RAW / "witch-walk-sheet.png", 4, 4, 64, 64, OUT / "witch-walk.png")
     sheet(RAW / "trees-chunky-v2.png", 2, 2, 128, 144, OUT / "trees.png", rust_pink=True)
     sheet(RAW / "leaves-chunky.png", 4, 1, 16, 16, OUT / "leaves.png")
