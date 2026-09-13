@@ -28,6 +28,8 @@ function windowP(t: number, startSec: number, endSec: number): number {
   return (t - startSec * 1000) / ((endSec - startSec) * 1000);
 }
 
+const ACE_SNOUT = { x: 226, y: 136 };
+
 export class FallYardScene extends Phaser.Scene {
   private storyMs = 0;
   private speed = 1;
@@ -37,6 +39,7 @@ export class FallYardScene extends Phaser.Scene {
   private witch!: Phaser.GameObjects.Ellipse;
   private leaves: Phaser.GameObjects.Sprite[] = [];
   private sparkles: { g: Phaser.GameObjects.Ellipse; t: number; v: number }[] = [];
+  private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
 
   constructor() {
     super('FallYard');
@@ -52,6 +55,20 @@ export class FallYardScene extends Phaser.Scene {
     for (let i = 0; i < 8; i++) {
       const g = this.add.ellipse(0, 0, 5 + (i % 3) * 2, 2 + (i % 2), 0xf4f0d8, 0.25 + (i % 4) * 0.08).setDepth(1);
       this.sparkles.push({ g, t: i / 8, v: 0.035 + (i % 3) * 0.018 });
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const g = this.add
+        .text(0, 0, 'z', {
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          color: '#f4e8c8',
+          stroke: '#3a2a18',
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(5);
+      this.zzz.push({ g, t: i / 3 });
     }
 
     this.crow = this.add.image(H.crow.x0, H.crow.y, 'crow').setOrigin(0.5, 1).setDepth(6);
@@ -86,6 +103,14 @@ export class FallYardScene extends Phaser.Scene {
       s.t = (s.t + vis * s.v) % 1;
       const p = alongRiver(s.t);
       s.g.setPosition(p.x, p.y);
+    }
+
+    for (const z of this.zzz) {
+      z.t = (z.t + vis * 0.16) % 1;
+      const t = z.t;
+      z.g.setPosition(ACE_SNOUT.x + Math.sin(t * Math.PI * 2) * 5, ACE_SNOUT.y - t * 20);
+      z.g.setAlpha(t < 0.1 ? t / 0.1 : 0.95 * (1 - (t - 0.1) / 0.9));
+      z.g.setScale(0.85 + t * 0.45);
     }
 
     const wins = H.crow.windows as WindowSec[];
