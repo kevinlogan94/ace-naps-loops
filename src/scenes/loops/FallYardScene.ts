@@ -5,13 +5,16 @@ import { formatTime, isActive, wrap } from '../../systems/storyClock';
 type WindowSec = { start: number; end: number };
 
 const RIVER: [number, number][] = [
-  [68, 268],
-  [54, 210],
-  [50, 160],
-  [72, 108],
-  [108, 68],
-  [138, 38],
-  [154, 22],
+  [82, 268],
+  [80, 232],
+  [100, 204],
+  [100, 176],
+  [100, 150],
+  [100, 122],
+  [94, 96],
+  [108, 70],
+  [118, 48],
+  [122, 30],
 ];
 
 function alongRiver(t: number): { x: number; y: number } {
@@ -38,7 +41,6 @@ export class FallYardScene extends Phaser.Scene {
   private crow!: Phaser.GameObjects.Image;
   private witch!: Phaser.GameObjects.Ellipse;
   private leaves: Phaser.GameObjects.Sprite[] = [];
-  private sparkles: { g: Phaser.GameObjects.Ellipse; t: number; v: number }[] = [];
   private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
 
   constructor() {
@@ -67,9 +69,22 @@ export class FallYardScene extends Phaser.Scene {
       repeatDelay: 3200,
     });
 
-    for (let i = 0; i < 8; i++) {
-      const g = this.add.ellipse(0, 0, 5 + (i % 3) * 2, 2 + (i % 2), 0xf4f0d8, 0.25 + (i % 4) * 0.08).setDepth(1);
-      this.sparkles.push({ g, t: i / 8, v: 0.035 + (i % 3) * 0.018 });
+    for (let i = 0; i < 18; i++) {
+      const p = alongRiver((i + 0.35) / 18);
+      const g = this.add
+        .rectangle(p.x, p.y + (i % 3) - 1, 7 + (i % 3) * 3, 2, 0xf4c48a, 0.2)
+        .setOrigin(0.5)
+        .setDepth(1);
+      this.tweens.add({
+        targets: g,
+        alpha: 0.95,
+        scaleX: 1.25,
+        duration: 480 + (i % 4) * 140,
+        yoyo: true,
+        repeat: -1,
+        delay: (i * 90) % 800,
+        ease: 'Sine.easeInOut',
+      });
     }
 
     for (let i = 0; i < 3; i++) {
@@ -112,12 +127,6 @@ export class FallYardScene extends Phaser.Scene {
       leaf.y = (leaf.y + vis * (10 + i * 2)) % 270;
       leaf.x = 80 + ((leaf.x - 80 + vis * 6) % 360);
       leaf.angle += vis * (20 + i * 4);
-    }
-
-    for (const s of this.sparkles) {
-      s.t = (s.t + vis * s.v) % 1;
-      const p = alongRiver(s.t);
-      s.g.setPosition(p.x, p.y);
     }
 
     for (const z of this.zzz) {

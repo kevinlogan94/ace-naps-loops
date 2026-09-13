@@ -23,3 +23,7 @@ Loop-only helpers sit next to the scene under `src/scenes/`. Shared systems in `
 ## Local only
 
 No deploy, Netlify, analytics, install gate, or save system.
+
+## Animation
+
+Do not create sprite maps or spritesheets. Use a single still frame and animate it in Phaser (tweens on position, scale, rotation, alpha, tint).
