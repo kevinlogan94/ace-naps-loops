@@ -52,6 +52,21 @@ export class FallYardScene extends Phaser.Scene {
 
     this.add.image(0, 0, 'yard').setOrigin(0).setDisplaySize(480, 270).setDepth(0);
 
+    const catEyes = this.add.container(444, 82).setDepth(2);
+    catEyes.add([
+      this.add.ellipse(-3, 0, 2.4, 1.6, 0xf2c84a, 0.95),
+      this.add.ellipse(3, 0, 2.4, 1.6, 0xf2c84a, 0.95),
+    ]);
+    this.tweens.add({
+      targets: catEyes,
+      scaleY: 0.08,
+      duration: 70,
+      yoyo: true,
+      hold: 40,
+      repeat: -1,
+      repeatDelay: 3200,
+    });
+
     for (let i = 0; i < 8; i++) {
       const g = this.add.ellipse(0, 0, 5 + (i % 3) * 2, 2 + (i % 2), 0xf4f0d8, 0.25 + (i % 4) * 0.08).setDepth(1);
       this.sparkles.push({ g, t: i / 8, v: 0.035 + (i % 3) * 0.018 });
