@@ -1,31 +1,18 @@
 # Credits
 
-Yard tiles still use ElizaWy LPC terrain. Character art is custom. Full license text lives next to the downloaded files.
+The yard is a generated background plate. Overlays are custom (crow, leaves) or drawn in Phaser (witch shadow).
 
 YouTube descriptions should repeat this attribution.
 
-## ElizaWy LPC
+## Background
 
-Repo: https://github.com/ElizaWy/LPC (commit `f07f7f5892e67c932c68f70bb04472f2c64e46bc`)
-
-| Asset | Authors | License |
-| --- | --- | --- |
-| Autumn terrain, water | Lanea Zimmerman (Sharm), Eliza Wyatt | OGA-BY 3.0 |
-| Autumn trees | Lanea Zimmerman (Sharm), Eliza Wyatt | OGA-BY 3.0 |
-| Plants, mushrooms | Eliza Wyatt, Hyptosis, Lanea Zimmerman | OGA-BY 3.0 |
-| Paneled House A | see Structure/Structures/Credits.txt | OGA-BY 3.0 |
-| Food, baskets, boxes, outdoor lighting | see Objects credits | OGA-BY 3.0 |
-| Water ripple FX | see FX/Credits.txt | OGA-BY 3.0 |
-
-Witch, Ace, and props are custom pixel sheets.
+| Asset | Notes |
+| --- | --- |
+| `public/assets/custom/fall-yard.jpg` | Generated autumn yard plate. |
 
 ## Custom
 
 | Asset | Notes |
 | --- | --- |
-| `public/assets/custom/witch-walk.png` | Witch walk, 4 dirs x 4 frames. |
-| `public/assets/custom/ace-nap.png` | Ace napping, white/tan, blue collar, 4 frames (breathing + z). |
-| `public/assets/custom/trees.png` | Autumn trees with chunky canopies. |
-| `public/assets/custom/hunt.png` | Pumpkin, red mushroom, scarecrow, tennis ball, letter. |
 | `public/assets/custom/leaves.png` | Falling autumn leaves. |
 | `public/assets/custom/crow.png` | Hunt crow. |

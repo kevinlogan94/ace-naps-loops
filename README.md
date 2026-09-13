@@ -10,7 +10,7 @@ Phaser 4.2 + Vite + pnpm. Local only. Record with the Mac screenshot toolbar.
 
 **Fall yard**, a 15 minute story loop. Paste it 3 times in the editor for about 45 minutes.
 
-The hunt lives in the YouTube description (8 items). It is not in-engine.
+The hunt lives in the YouTube description. It is not in-engine.
 
 ## How to run
 
@@ -39,24 +39,20 @@ Record at `speed=1`. Higher speed is for previewing timed events, not for the ca
 
 ## Art
 
-Autumn yard uses ElizaWy terrain, house, and wildflowers. Ace, the witch, trees, and falling leaves are custom pixel sheets.
+One fall-yard background plate. Overlays are falling leaves, crow, and witch.
 
 ## Ace
 
-Always visible in video 1. White/tan Ace with a blue collar, napping in the yard. Ace is **not** on the hunt list.
+Always visible in the plate, napping in the yard. Ace is **not** on the hunt list.
 
 ## Hunt list (YouTube description)
 
-Always on screen:
+Always on screen (painted in the plate):
 
 - Pumpkin by the house
 - Red mushroom
-- Scarecrow
-- Ace's tennis ball
-- Letter at the door
 
 Timed (appear on the event clock):
 
 - Crow
-- Lit lantern
 - Witch

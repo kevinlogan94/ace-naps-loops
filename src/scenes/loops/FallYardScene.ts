@@ -1,35 +1,31 @@
 import Phaser from 'phaser';
 import data from '../../data/videos/fall-yard.json';
 import { formatTime, isActive, wrap } from '../../systems/storyClock';
-import { LayeredActor } from '../../systems/layeredActor';
 
 type WindowSec = { start: number; end: number };
 
-const GRASS = [17, 19, 20, 21];
-const SHORE_L = 256;
-const SHORE_R = 258;
-const WATER = [268, 269, 270, 271];
-const TREE_SM_ORANGE = 2;
-const TREE_SM_RED = 1;
-const TREE_MD_ORANGE = 0;
+const RIVER: [number, number][] = [
+  [68, 268],
+  [54, 210],
+  [50, 160],
+  [72, 108],
+  [108, 68],
+  [138, 38],
+  [154, 22],
+];
 
-function fadeAlpha(t: number, startSec: number, endSec: number, fadeMs = 800): number {
-  const start = startSec * 1000;
-  const end = endSec * 1000;
-  if (!isActive(t, start, end)) return 0;
-  const into = t - start;
-  const left = end - t;
-  if (into < fadeMs) return into / fadeMs;
-  if (left < fadeMs) return left / fadeMs;
-  return 1;
+function alongRiver(t: number): { x: number; y: number } {
+  const u = t * (RIVER.length - 1);
+  const i = Math.min(RIVER.length - 2, Math.floor(u));
+  const f = u - i;
+  return {
+    x: RIVER[i][0] + (RIVER[i + 1][0] - RIVER[i][0]) * f,
+    y: RIVER[i][1] + (RIVER[i + 1][1] - RIVER[i][1]) * f,
+  };
 }
 
-function grassAt(x: number, y: number): number {
-  return GRASS[(x * 3 + y * 7) % GRASS.length];
-}
-
-function waterAt(y: number): number {
-  return WATER[y % WATER.length];
+function windowP(t: number, startSec: number, endSec: number): number {
+  return (t - startSec * 1000) / ((endSec - startSec) * 1000);
 }
 
 export class FallYardScene extends Phaser.Scene {
@@ -37,10 +33,10 @@ export class FallYardScene extends Phaser.Scene {
   private speed = 1;
   private video = 'fall-yard';
   private clock!: Phaser.GameObjects.Text;
-  private lantern!: Phaser.GameObjects.Sprite;
   private crow!: Phaser.GameObjects.Image;
-  private witch!: LayeredActor;
+  private witch!: Phaser.GameObjects.Ellipse;
   private leaves: Phaser.GameObjects.Sprite[] = [];
+  private sparkles: { g: Phaser.GameObjects.Ellipse; t: number; v: number }[] = [];
 
   constructor() {
     super('FallYard');
@@ -49,64 +45,17 @@ export class FallYardScene extends Phaser.Scene {
   create(): void {
     this.speed = Number(this.registry.get('speed') ?? 1) || 1;
     this.video = String(this.registry.get('video') ?? 'fall-yard');
-    const L = data.layout;
     const H = data.hunt;
 
-    for (let y = 0; y < 9; y++) {
-      for (let x = 0; x < 15; x++) {
-        let frame = grassAt(x, y);
-        if (x === 2) frame = SHORE_L;
-        else if (x === 3) frame = waterAt(y);
-        else if (x === 4) frame = SHORE_R;
-        this.add.image(x * 32, y * 32, 'terrain', frame).setOrigin(0).setDepth(0);
-      }
-      this.add.sprite(96, y * 32, 'ripple', 0).setOrigin(0).setDepth(1).play('ripple');
+    this.add.image(0, 0, 'yard').setOrigin(0).setDisplaySize(480, 270).setDepth(0);
+
+    for (let i = 0; i < 8; i++) {
+      const g = this.add.ellipse(0, 0, 5 + (i % 3) * 2, 2 + (i % 2), 0xf4f0d8, 0.25 + (i % 4) * 0.08).setDepth(1);
+      this.sparkles.push({ g, t: i / 8, v: 0.035 + (i % 3) * 0.018 });
     }
 
-    this.add.image(-28, -24, 'trees', TREE_MD_ORANGE).setOrigin(0).setDepth(3);
-    this.add.image(-36, 70, 'trees', TREE_SM_RED).setOrigin(0).setDepth(3);
-    this.add.image(-20, 158, 'trees', TREE_SM_ORANGE).setOrigin(0).setDepth(3);
-    this.add.image(408, -32, 'trees', TREE_SM_RED).setOrigin(0).setDepth(3);
-    this.add.image(412, 156, 'trees', TREE_MD_ORANGE).setOrigin(0).setDepth(3);
-
-    this.add.image(288, 2, 'house').setOrigin(0).setDepth(2);
-
-    const flowers = [
-      [108, 48, 2],
-      [124, 92, 8],
-      [148, 36, 14],
-      [176, 70, 20],
-      [232, 44, 26],
-      [252, 168, 3],
-      [276, 196, 11],
-      [164, 220, 17],
-      [140, 188, 23],
-      [348, 188, 5],
-      [372, 212, 15],
-      [220, 84, 29],
-    ];
-    for (const [x, y, frame] of flowers) {
-      this.add.image(x, y, 'wildflowers', frame).setOrigin(0).setDepth(2);
-    }
-
-    this.add.image(H.always[0].x, H.always[0].y, 'hunt', 0).setOrigin(0.5, 1).setDepth(4);
-    this.add.image(H.always[1].x, H.always[1].y, 'hunt', 1).setOrigin(0.5, 1).setDepth(4);
-    this.add.image(H.always[2].x, H.always[2].y, 'hunt', 2).setOrigin(0.5, 1).setDepth(4);
-    this.add.image(H.always[3].x, H.always[3].y, 'hunt', 3).setOrigin(0.5, 1).setDepth(4);
-    this.add.image(H.always[4].x, H.always[4].y, 'hunt', 4).setOrigin(0.5, 1).setDepth(4);
-
-    this.add.sprite(L.ace.x, L.ace.y, 'ace', 0).setOrigin(0.5, 1).setDepth(L.ace.y).play('ace-nap');
-    this.add.ellipse(L.ace.x, L.ace.y - 2, L.ace.w, L.ace.h * 0.3, 0x2a1a10, 0.22).setDepth(L.ace.y - 1);
-    this.lantern = this.add
-      .sprite(H.lantern.x, H.lantern.y, 'lantern', 0)
-      .setOrigin(0.5, 1)
-      .setScale(0.42)
-      .setDepth(6)
-      .setAlpha(0);
-    this.crow = this.add.image(H.crow.x, H.crow.y, 'crow').setOrigin(0.5, 1).setDepth(6).setAlpha(0);
-
-    this.witch = new LayeredActor(this, H.witch.x, H.witch.y, 'witch-walk', 7);
-    this.witch.view.setAlpha(0);
+    this.crow = this.add.image(H.crow.x0, H.crow.y, 'crow').setOrigin(0.5, 1).setDepth(6);
+    this.witch = this.add.ellipse(H.witch.x, H.witch.y, 42, 11, 0x0a0810, 0.35).setDepth(6).setScale(1.35, 1);
 
     for (let i = 0; i < 10; i++) {
       this.leaves.push(
@@ -133,21 +82,38 @@ export class FallYardScene extends Phaser.Scene {
       leaf.angle += vis * (20 + i * 4);
     }
 
-    this.lantern.setAlpha(fadeAlpha(now, H.lantern.start, H.lantern.end));
+    for (const s of this.sparkles) {
+      s.t = (s.t + vis * s.v) % 1;
+      const p = alongRiver(s.t);
+      s.g.setPosition(p.x, p.y);
+    }
 
-    let crowA = 0;
-    for (const w of H.crow.windows as WindowSec[]) crowA = Math.max(crowA, fadeAlpha(now, w.start, w.end));
-    this.crow.setAlpha(crowA);
+    const wins = H.crow.windows as WindowSec[];
+    let crowOn = false;
+    for (let i = 0; i < wins.length; i++) {
+      const w = wins[i];
+      if (!isActive(now, w.start * 1000, w.end * 1000)) continue;
+      const p = Math.min(1, Math.max(0, windowP(now, w.start, w.end)));
+      const ltr = i === 0;
+      const x0 = ltr ? H.crow.x0 : H.crow.x1;
+      const x1 = ltr ? H.crow.x1 : H.crow.x0;
+      this.crow.setPosition(x0 + (x1 - x0) * p, H.crow.y - Math.sin(p * Math.PI) * 16);
+      this.crow.setScale(ltr ? 1 : -1, 1);
+      crowOn = true;
+    }
+    if (!crowOn) {
+      const mid = now >= wins[0].end * 1000 && now < wins[1].start * 1000;
+      this.crow.setPosition(mid ? H.crow.x1 : H.crow.x0, H.crow.y);
+      this.crow.setScale(1, 1);
+    }
 
-    const witchA = fadeAlpha(now, H.witch.start, H.witch.end);
-    this.witch.view.setAlpha(witchA);
-    if (witchA > 0) {
-      const span = (H.witch.end - H.witch.start) * 1000;
-      const p = (now - H.witch.start * 1000) / span;
-      const y = H.witch.y + (H.witch.yEnd - H.witch.y) * Math.min(1, Math.max(0, p));
-      this.witch.view.setPosition(H.witch.x, y);
-      this.witch.face(0, 1);
-      this.witch.walk(vis, true);
+    const wStart = H.witch.start * 1000;
+    const wEnd = H.witch.end * 1000;
+    if (isActive(now, wStart, wEnd)) {
+      const p = Math.min(1, Math.max(0, windowP(now, H.witch.start, H.witch.end)));
+      this.witch.setPosition(H.witch.x + (H.witch.xEnd - H.witch.x) * p, H.witch.y);
+    } else {
+      this.witch.setPosition(now < wStart ? H.witch.x : H.witch.xEnd, H.witch.y);
     }
 
     this.clock.setText(`${this.video} ${formatTime(now)} x${this.speed}`);

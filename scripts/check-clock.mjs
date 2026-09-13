@@ -31,15 +31,10 @@ assert(formatTime(0) === '00:00', 'format seam 0');
 assert(formatTime(900_000) === '00:00', 'format seam 15:00');
 assert(formatTime(420_000) === '07:00', 'format 07:00');
 
-const lantern = [240_000, 540_000];
 const crowA = [120_000, 160_000];
 const crowB = [600_000, 640_000];
 const witch = [680_000, 715_000];
 
-assert(!isActive(0, ...lantern), 'no lantern at seam');
-assert(!isActive(900_000, ...lantern), 'no lantern at wrap');
-assert(isActive(240_000, ...lantern), 'lantern start');
-assert(!isActive(540_000, ...lantern), 'lantern exclusive end');
 assert(isActive(120_000, ...crowA) && isActive(600_000, ...crowB), 'crow windows');
 assert(!isActive(0, ...crowA) && !isActive(0, ...crowB), 'no crow at seam');
 assert(isActive(680_000, ...witch) && !isActive(0, ...witch), 'witch not at seam');

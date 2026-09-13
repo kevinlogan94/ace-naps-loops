@@ -1,34 +1,22 @@
 {
   "id": "fall-yard",
   "loopSeconds": 900,
-  "layout": {
-    "leftForest": { "x": 0, "y": 0, "w": 56, "h": 270 },
-    "stream": { "x": 56, "y": 0, "w": 36, "h": 270 },
-    "yard": { "x": 92, "y": 0, "w": 332, "h": 270 },
-    "rightForest": { "x": 424, "y": 0, "w": 56, "h": 270 },
-    "house": { "x": 288, "y": 2, "w": 160, "h": 160 },
-    "roof": { "x": 288, "y": 2, "w": 160, "h": 22 },
-    "ace": { "x": 188, "y": 222, "w": 40, "h": 26 }
-  },
   "hunt": {
     "always": [
-      { "id": "pumpkin", "label": "P", "color": "#e67a22", "x": 364, "y": 176, "w": 16, "h": 14 },
-      { "id": "mushroom", "label": "M", "color": "#c0392b", "x": 78, "y": 168, "w": 12, "h": 12 },
-      { "id": "scarecrow", "label": "SC", "color": "#c4a46a", "x": 176, "y": 96, "w": 16, "h": 26 },
-      { "id": "ball", "label": "TB", "color": "#f1c40f", "x": 228, "y": 232, "w": 8, "h": 8 },
-      { "id": "letter", "label": "LT", "color": "#f4f1e8", "x": 396, "y": 154, "w": 12, "h": 8 }
+      { "id": "pumpkin", "label": "P", "color": "#e67a22", "x": 360, "y": 150, "w": 16, "h": 14 },
+      { "id": "mushroom", "label": "M", "color": "#c0392b", "x": 430, "y": 230, "w": 12, "h": 12 }
     ],
-    "lantern": { "start": 240, "end": 540, "x": 392, "y": 148, "w": 14, "h": 40 },
     "crow": {
       "windows": [
         { "start": 120, "end": 160 },
         { "start": 600, "end": 640 }
       ],
-      "x": 18,
-      "y": 36,
+      "x0": -28,
+      "x1": 508,
+      "y": 48,
       "w": 12,
       "h": 8
     },
-    "witch": { "start": 680, "end": 715, "x": 438, "y": 20, "w": 10, "h": 18, "yEnd": 236 }
+    "witch": { "start": 680, "end": 715, "x": -36, "xEnd": 516, "y": 82 }
   }
 }
