@@ -96,6 +96,34 @@ export class FallYardScene extends Phaser.Scene {
       repeatDelay: 3200,
     });
 
+    // Dark sheet ghosts: oval head, flat hem (gap shortened for testing).
+    for (const f of [
+      { x0: x(333), x1: x(342), y: y(93), first: 1000, gap: 5000 },
+      { x0: x(374), x1: x(367), y: y(86), first: 3500, gap: 5000 },
+    ]) {
+      const w = x(6);
+      const h = y(14);
+      const person = this.add.graphics().setDepth(2).setAlpha(0.92).setVisible(false);
+      person.fillStyle(0x16101c, 1);
+      person.fillRect(-w / 2, -h * 0.5, w, h * 0.5);
+      person.fillEllipse(0, -h * 0.5, w, h * 0.9);
+      person.setPosition(f.x0, f.y);
+      const walk = () => {
+        person.setPosition(f.x0, f.y).setVisible(true);
+        this.tweens.add({
+          targets: person,
+          x: f.x1,
+          duration: 2600,
+          ease: 'Linear',
+          onComplete: () => {
+            person.setVisible(false);
+            this.time.delayedCall(f.gap, walk);
+          },
+        });
+      };
+      this.time.delayedCall(f.first, walk);
+    }
+
     for (let i = 0; i < 18; i++) {
       const p = alongRiver((i + 0.35) / 18);
       const g = this.add
