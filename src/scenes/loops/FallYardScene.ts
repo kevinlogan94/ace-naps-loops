@@ -158,8 +158,9 @@ export class FallYardScene extends Phaser.Scene {
 
     this.crow = this.add
       .image(x(H.crow.x0), y(H.crow.y), 'crow')
-      .setOrigin(0.5, 1)
-      .setScale(SX, SY)
+      .setOrigin(0.5)
+      .setScale(1)
+      .setVisible(false)
       .setDepth(6);
     this.witch = this.add
       .ellipse(x(H.witch.x), y(H.witch.y), x(42), y(11), 0x0a0810, 0.35)
@@ -218,14 +219,13 @@ export class FallYardScene extends Phaser.Scene {
       const x0 = x(ltr ? H.crow.x0 : H.crow.x1);
       const x1 = x(ltr ? H.crow.x1 : H.crow.x0);
       this.crow.setPosition(x0 + (x1 - x0) * p, y(H.crow.y) - Math.sin(p * Math.PI) * y(16));
-      this.crow.setScale(ltr ? SX : -SX, SY);
+      const dir = ltr ? 1 : -1;
+      this.crow.setScale(dir, 0.88 + 0.12 * Math.abs(Math.sin(p * Math.PI * 8)));
+      this.crow.setAngle(dir * (8 - p * 16));
+      this.crow.setVisible(true);
       crowOn = true;
     }
-    if (!crowOn) {
-      const mid = now >= wins[0].end * 1000 && now < wins[1].start * 1000;
-      this.crow.setPosition(x(mid ? H.crow.x1 : H.crow.x0), y(H.crow.y));
-      this.crow.setScale(SX, SY);
-    }
+    if (!crowOn) this.crow.setVisible(false);
 
     const wStart = H.witch.start * 1000;
     const wEnd = H.witch.end * 1000;
