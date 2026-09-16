@@ -38,7 +38,7 @@ function windowP(t: number, startSec: number, endSec: number): number {
   return (t - startSec * 1000) / ((endSec - startSec) * 1000);
 }
 
-const ACE_SNOUT = { x: x(226), y: y(136) };
+const ACE_SNOUT = { x: x(235), y: y(140) };
 
 // ponytail: AABB corridors stand in for canopy polygons; swap to plate-traced polys if leaves miss the foliage.
 const LEFT_BANK = { x0: 0, x1: x(90), y0: 0, y1: y(270) };
