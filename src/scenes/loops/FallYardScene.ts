@@ -63,7 +63,7 @@ export class FallYardScene extends Phaser.Scene {
   private speed = 1;
   private video = 'fall-yard';
   private clock!: Phaser.GameObjects.Text;
-  private crow!: Phaser.GameObjects.Image;
+  private crow!: Phaser.GameObjects.Sprite;
   private witch!: Phaser.GameObjects.Ellipse;
   private leaves: Phaser.GameObjects.Sprite[] = [];
   private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
@@ -80,6 +80,14 @@ export class FallYardScene extends Phaser.Scene {
     this.add.image(0, 0, 'yard').setOrigin(0).setDepth(0);
     this.textures.get('crow').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('leaves').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    if (!this.anims.exists('crow-fly')) {
+      this.anims.create({
+        key: 'crow-fly',
+        frames: this.anims.generateFrameNumbers('crow', { start: 0, end: 3 }),
+        frameRate: 8,
+        repeat: -1,
+      });
+    }
 
     const catEyes = this.add.container(x(444), y(82)).setDepth(2);
     catEyes.add([
@@ -158,10 +166,11 @@ export class FallYardScene extends Phaser.Scene {
       this.zzz.push({ g, t: i / 3 });
     }
 
+    // Sheet cells are 512px with padding; ~0.4 matches the old 118px still.
     this.crow = this.add
-      .image(x(H.crow.x0), y(H.crow.y), 'crow')
+      .sprite(x(H.crow.x0), y(H.crow.y), 'crow')
       .setOrigin(0.5)
-      .setScale(1)
+      .setScale(0.4)
       .setVisible(false)
       .setDepth(6);
     this.witch = this.add
@@ -220,14 +229,17 @@ export class FallYardScene extends Phaser.Scene {
       const ltr = i === 0;
       const x0 = x(ltr ? H.crow.x0 : H.crow.x1);
       const x1 = x(ltr ? H.crow.x1 : H.crow.x0);
-      this.crow.setPosition(x0 + (x1 - x0) * p, y(H.crow.y) - Math.sin(p * Math.PI) * y(16));
-      const dir = ltr ? 1 : -1;
-      this.crow.setScale(dir, 0.88 + 0.12 * Math.abs(Math.sin(p * Math.PI * 8)));
-      this.crow.setAngle(dir * (8 - p * 16));
-      this.crow.setVisible(true);
+      this.crow.setPosition(x0 + (x1 - x0) * p, y(H.crow.y));
+      this.crow.setFlipX(!ltr);
+      this.crow.setAngle(0);
       crowOn = true;
     }
-    if (!crowOn) this.crow.setVisible(false);
+    this.crow.setVisible(crowOn);
+    if (crowOn) {
+      if (!this.crow.anims.isPlaying) this.crow.play('crow-fly');
+    } else {
+      this.crow.stop();
+    }
 
     const wStart = H.witch.start * 1000;
     const wEnd = H.witch.end * 1000;

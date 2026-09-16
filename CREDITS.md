@@ -15,4 +15,4 @@ YouTube descriptions should repeat this attribution.
 | Asset | Notes |
 | --- | --- |
 | `public/assets/custom/leaves.png` | Falling autumn leaves. |
-| `public/assets/custom/crow.png` | Hunt crow. |
+| `public/assets/custom/crow-sheet.png` | Hunt crow fly cycle (2×2). |

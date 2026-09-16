@@ -12,7 +12,10 @@ function assert(ok, msg) {
   }
 }
 
-const checks = [['public/assets/custom/leaves.png', 64, 16]];
+const checks = [
+  ['public/assets/custom/leaves.png', 64, 16],
+  ['public/assets/custom/crow-sheet.png', 1024, 1024],
+];
 
 for (const [path, w, h] of checks) {
   const size = pngSize(path);

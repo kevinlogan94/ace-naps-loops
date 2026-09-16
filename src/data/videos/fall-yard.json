@@ -7,10 +7,7 @@
       { "id": "mushroom", "label": "M", "color": "#c0392b", "x": 430, "y": 230, "w": 12, "h": 12 }
     ],
     "crow": {
-      "windows": [
-        { "start": 120, "end": 160 },
-        { "start": 600, "end": 640 }
-      ],
+      "windows": [{ "start": 10, "end": 16 }],
       "x0": -28,
       "x1": 508,
       "y": 48,
