@@ -166,11 +166,11 @@ export class FallYardScene extends Phaser.Scene {
       this.zzz.push({ g, t: i / 3 });
     }
 
-    // Sheet cells are 512px with padding; ~0.4 matches the old 118px still.
+    // Sheet cells are 512px with padding; 0.26 ~ old 118px still at roof depth.
     this.crow = this.add
       .sprite(x(H.crow.x0), y(H.crow.y), 'crow')
       .setOrigin(0.5)
-      .setScale(0.4)
+      .setScale(0.26)
       .setVisible(false)
       .setDepth(6);
     this.witch = this.add
