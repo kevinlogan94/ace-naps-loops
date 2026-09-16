@@ -31,7 +31,7 @@ Record at `speed=1`. Higher speed is for previewing timed events, not for the ca
 
 ## Recording
 
-1. Open the page in a 16:9 window (up to 1920x1080). The scene is 480x270, scaled with FIT.
+1. Open the page in a 16:9 window. The plate is 2730x1536, FIT into the window.
 2. Use `speed=1`.
 3. Mac screen record for about 15 minutes.
 4. Duplicate that clip 3 times.
