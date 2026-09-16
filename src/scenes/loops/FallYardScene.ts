@@ -13,8 +13,6 @@ const RIVER: [number, number][] = [
   [100, 122],
   [94, 96],
   [108, 70],
-  [118, 48],
-  [122, 30],
 ];
 
 function alongRiver(t: number): { x: number; y: number } {
