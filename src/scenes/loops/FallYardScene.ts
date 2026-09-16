@@ -33,6 +33,24 @@ function windowP(t: number, startSec: number, endSec: number): number {
 
 const ACE_SNOUT = { x: 226, y: 136 };
 
+// ponytail: AABB corridors stand in for canopy polygons; swap to plate-traced polys if leaves miss the foliage.
+const LEFT_BANK = { x0: 0, x1: 90, y0: 0, y1: 270 };
+const BACK_LINE = { x0: 80, x1: 280, y0: 0, y1: 90 };
+
+function inBox(x: number, y: number, b: typeof LEFT_BANK): boolean {
+  return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
+}
+
+function inCanopy(x: number, y: number): boolean {
+  return inBox(x, y, LEFT_BANK) || inBox(x, y, BACK_LINE);
+}
+
+function canopySpawn(intoBack: boolean): { x: number; y: number } {
+  return intoBack
+    ? { x: 80 + Math.random() * 200, y: Math.random() * 24 }
+    : { x: Math.random() * 90, y: Math.random() * 40 };
+}
+
 export class FallYardScene extends Phaser.Scene {
   private storyMs = 0;
   private speed = 1;
@@ -105,8 +123,9 @@ export class FallYardScene extends Phaser.Scene {
     this.witch = this.add.ellipse(H.witch.x, H.witch.y, 42, 11, 0x0a0810, 0.35).setDepth(6).setScale(1.35, 1);
 
     for (let i = 0; i < 10; i++) {
+      const p = i < 4 ? canopySpawn(false) : canopySpawn(true);
       this.leaves.push(
-        this.add.sprite(100 + i * 34, (i * 41) % 270, 'leaves', i % 4).setDepth(9).setAlpha(0.9),
+        this.add.sprite(p.x, p.y, 'leaves', i % 4).setDepth(9).setAlpha(0.9).setScale(0.4),
       );
     }
 
@@ -124,9 +143,17 @@ export class FallYardScene extends Phaser.Scene {
 
     for (let i = 0; i < this.leaves.length; i++) {
       const leaf = this.leaves[i];
-      leaf.y = (leaf.y + vis * (10 + i * 2)) % 270;
-      leaf.x = 80 + ((leaf.x - 80 + vis * 6) % 360);
+      leaf.y += vis * (10 + i * 2);
+      leaf.x += vis * 6 + Math.sin((leaf.y + i * 13) * 0.06) * 0.4;
       leaf.angle += vis * (20 + i * 4);
+
+      if (!inCanopy(leaf.x, leaf.y)) {
+        leaf.alpha -= vis * 1.2;
+        if (leaf.alpha <= 0) {
+          const p = canopySpawn(i % 2 === 0);
+          leaf.setPosition(p.x, p.y).setAlpha(0.9);
+        }
+      }
     }
 
     for (const z of this.zzz) {
