@@ -132,8 +132,8 @@ export class FallYardScene extends Phaser.Scene {
       yoyo: true,
       hold: 60_000,
       repeat: -1,
-      repeatDelay: 10 * 60_000 - 2000 * 2 - 60_000,
-      delay: 10 * 60_000,
+      repeatDelay: 15 * 60_000 - 2000 * 2 - 60_000,
+      delay: 7 * 60_000,
     });
 
     for (let i = 0; i < 18; i++) {
@@ -253,19 +253,19 @@ export class FallYardScene extends Phaser.Scene {
       this.crow.stop();
     }
 
-    const wStart = H.witch.start * 1000;
-    const wEnd = H.witch.end * 1000;
-    if (isActive(now, wStart, wEnd)) {
-      const p = Math.min(1, Math.max(0, windowP(now, H.witch.start, H.witch.end)));
+    let witchOn = false;
+    for (const w of H.witch.windows as WindowSec[]) {
+      if (!isActive(now, w.start * 1000, w.end * 1000)) continue;
+      const p = Math.min(1, Math.max(0, windowP(now, w.start, w.end)));
       this.witch
         .setVisible(true)
         .setFlipX(false)
         .setAlpha(1)
         .setAngle(0)
         .setPosition(x(H.witch.x) + (x(H.witch.xEnd) - x(H.witch.x)) * p, y(H.witch.y));
-    } else {
-      this.witch.setVisible(false);
+      witchOn = true;
     }
+    if (!witchOn) this.witch.setVisible(false);
 
     this.clock.setText(`${this.video} ${formatTime(now)} x${this.speed}`);
   }
