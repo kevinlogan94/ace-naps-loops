@@ -193,7 +193,14 @@ export class FallYardScene extends Phaser.Scene {
     this.clock = this.add
       .text(x(6), y(6), '', { fontFamily: 'monospace', fontSize: `${Math.round(y(8))}px`, color: '#f4e8c8' })
       .setDepth(100)
-      .setScrollFactor(0);
+      .setScrollFactor(0)
+      .setVisible(false);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'h' || e.key === 'H') this.clock.setVisible(!this.clock.visible);
+    };
+    window.addEventListener('keydown', onKey);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('keydown', onKey));
   }
 
   update(_t: number, delta: number): void {
