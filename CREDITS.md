@@ -1,6 +1,6 @@
 # Credits
 
-The yard is a generated background plate. Overlays are custom (crow, leaves) or drawn in Phaser (witch shadow).
+The yard is a generated background plate. Overlays are custom (crow, leaves, witch).
 
 YouTube descriptions should repeat this attribution.
 
@@ -16,3 +16,4 @@ YouTube descriptions should repeat this attribution.
 | --- | --- |
 | `public/assets/custom/leaves.png` | Falling autumn leaves. |
 | `public/assets/custom/crow-sheet.png` | Hunt crow fly cycle (2×2). |
+| `public/assets/custom/witch.png` | Hunt witch on a broom. |

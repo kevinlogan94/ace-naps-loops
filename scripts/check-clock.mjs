@@ -32,10 +32,10 @@ assert(formatTime(900_000) === '00:00', 'format seam 15:00');
 assert(formatTime(420_000) === '07:00', 'format 07:00');
 
 const crowA = [10_000, 16_000];
-const witch = [0, 9_000];
+const witch = [0, 7_000];
 
 assert(isActive(10_000, ...crowA), 'crow window');
 assert(!isActive(0, ...crowA), 'no crow at seam');
-assert(isActive(0, ...witch) && !isActive(9_000, ...witch), 'witch at seam');
+assert(isActive(0, ...witch) && !isActive(7_000, ...witch), 'witch at seam');
 
 console.log('check-clock ok');

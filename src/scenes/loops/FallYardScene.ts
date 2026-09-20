@@ -175,10 +175,11 @@ export class FallYardScene extends Phaser.Scene {
       .setScale(0.26)
       .setVisible(false)
       .setDepth(6);
+    // Same yard depth as Ace (in the air, not back at the house). Ace is ~100px tall on the plate and about a quarter of a door; a person is ~4x Ace. Sitting-on-broom is a bit shorter than standing, so 1.45 ≈ 256px.
     this.witch = this.add
       .image(x(H.witch.x), y(H.witch.y), 'witch')
       .setOrigin(0.5)
-      .setScale(1.7)
+      .setScale(1.45)
       .setVisible(false)
       .setDepth(6);
 
@@ -249,17 +250,12 @@ export class FallYardScene extends Phaser.Scene {
     const wEnd = H.witch.end * 1000;
     if (isActive(now, wStart, wEnd)) {
       const p = Math.min(1, Math.max(0, windowP(now, H.witch.start, H.witch.end)));
-      const fadeT = 1000 / (wEnd - wStart);
-      const fade = Math.min(1, p / fadeT, (1 - p) / fadeT);
       this.witch
         .setVisible(true)
-        .setFlipX(true)
-        .setAlpha(0.92 * fade)
-        .setAngle(8 + Math.sin(p * Math.PI * 4) * 4)
-        .setPosition(
-          x(H.witch.x) + (x(H.witch.xEnd) - x(H.witch.x)) * p,
-          y(H.witch.y) + Math.sin(p * Math.PI * 6) * y(5),
-        );
+        .setFlipX(false)
+        .setAlpha(1)
+        .setAngle(0)
+        .setPosition(x(H.witch.x) + (x(H.witch.xEnd) - x(H.witch.x)) * p, y(H.witch.y));
     } else {
       this.witch.setVisible(false);
     }
