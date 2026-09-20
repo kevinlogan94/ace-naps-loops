@@ -38,4 +38,17 @@ assert(isActive(10_000, ...crowA), 'crow window');
 assert(!isActive(0, ...crowA), 'no crow at seam');
 assert(isActive(0, ...witch) && !isActive(7_000, ...witch), 'witch at seam');
 
+function ghostSheetAlpha(p, durSec) {
+  if (durSec <= 0) return 0;
+  const fade = durSec < 4 ? durSec / 2 : 2;
+  const t = p * durSec;
+  if (t < fade) return (t / fade) * 0.5;
+  if (t > durSec - fade) return ((durSec - t) / fade) * 0.5;
+  return 0.5;
+}
+assert(ghostSheetAlpha(0, 64) === 0, 'ghost start');
+assert(Math.abs(ghostSheetAlpha(2 / 64, 64) - 0.5) < 1e-9, 'ghost after fade in');
+assert(ghostSheetAlpha(1, 64) === 0, 'ghost end');
+assert(ghostSheetAlpha(0.5, 2) > 0 && ghostSheetAlpha(0.5, 2) <= 0.5, 'short window mid');
+
 console.log('check-clock ok');

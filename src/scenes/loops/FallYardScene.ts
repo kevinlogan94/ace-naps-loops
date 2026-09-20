@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import data from '../../data/videos/fall-yard.json';
 import { formatTime, isActive, wrap } from '../../systems/storyClock';
+import { mountFallYardEditor } from './fallYardEditor';
 
 type WindowSec = { start: number; end: number };
 
@@ -35,7 +36,19 @@ function alongRiver(t: number): { x: number; y: number } {
 }
 
 function windowP(t: number, startSec: number, endSec: number): number {
-  return (t - startSec * 1000) / ((endSec - startSec) * 1000);
+  const d = (endSec - startSec) * 1000;
+  if (d <= 0) return 0;
+  return (t - startSec * 1000) / d;
+}
+
+/** First/last 2s fade 0↔0.5; windows shorter than 4s just in/out. */
+function ghostSheetAlpha(p: number, durSec: number): number {
+  if (durSec <= 0) return 0;
+  const fade = durSec < 4 ? durSec / 2 : 2;
+  const t = p * durSec;
+  if (t < fade) return (t / fade) * 0.5;
+  if (t > durSec - fade) return ((durSec - t) / fade) * 0.5;
+  return 0.5;
 }
 
 const ACE_SNOUT = { x: x(235), y: y(140) };
@@ -59,14 +72,16 @@ function canopySpawn(intoBack: boolean): { x: number; y: number } {
 }
 
 export class FallYardScene extends Phaser.Scene {
-  private storyMs = 0;
+  storyMs = 0;
   private speed = 1;
   private video = 'fall-yard';
   private clock!: Phaser.GameObjects.Text;
   private crow!: Phaser.GameObjects.Sprite;
   private witch!: Phaser.GameObjects.Image;
+  private ghost!: Phaser.GameObjects.Graphics;
   private leaves: Phaser.GameObjects.Sprite[] = [];
   private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
+  private editor?: { tick: (ms: number) => void; destroy: () => void };
 
   constructor() {
     super('FallYard');
@@ -78,7 +93,7 @@ export class FallYardScene extends Phaser.Scene {
     const H = data.hunt;
 
     this.add.image(0, 0, 'yard').setOrigin(0).setDepth(0);
-    this.add.image(2105 , 10, 'yard-tree').setOrigin(0).setScale(1.45).setDepth(7); // in front of crow
+    this.add.image(2105, 10, 'yard-tree').setOrigin(0).setScale(1.45).setDepth(7); // in front of crow
     this.textures.get('crow').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('leaves').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('witch').setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -124,17 +139,8 @@ export class FallYardScene extends Phaser.Scene {
     person.lineTo(-rx, -gh * 0.04);
     person.closePath();
     person.fillPath();
-    person.setPosition(x(313), y(39)).setAlpha(0).setVisible(true);
-    this.tweens.add({
-      targets: person,
-      alpha: 0.5,
-      duration: 2000,
-      yoyo: true,
-      hold: 60_000,
-      repeat: -1,
-      repeatDelay: 15 * 60_000 - 2000 * 2 - 60_000,
-      delay: 7 * 60_000,
-    });
+    this.ghost = person;
+    person.setPosition(x(H.ghost.x), y(H.ghost.y)).setAlpha(0).setVisible(false);
 
     for (let i = 0; i < 18; i++) {
       const p = alongRiver((i + 0.35) / 18);
@@ -177,7 +183,7 @@ export class FallYardScene extends Phaser.Scene {
       .setDepth(6);
     // Same yard depth as Ace (in the air, not back at the house). Ace is ~100px tall on the plate and about a quarter of a door; a person is ~4x Ace. Sitting-on-broom is a bit shorter than standing, so 1.45 ≈ 256px.
     this.witch = this.add
-      .image(x(H.witch.x), y(H.witch.y), 'witch')
+      .image(x(H.witch.x0), y(H.witch.y), 'witch')
       .setOrigin(0.5)
       .setScale(1.45)
       .setVisible(false)
@@ -196,11 +202,13 @@ export class FallYardScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setVisible(false);
 
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'h' || e.key === 'H') this.clock.setVisible(!this.clock.visible);
-    };
-    window.addEventListener('keydown', onKey);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('keydown', onKey));
+    this.editor = mountFallYardEditor({
+      setMs: (ms) => {
+        this.storyMs = wrap(ms);
+      },
+      setHud: (on) => this.clock.setVisible(on),
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.editor?.destroy());
   }
 
   update(_t: number, delta: number): void {
@@ -262,11 +270,22 @@ export class FallYardScene extends Phaser.Scene {
         .setFlipX(false)
         .setAlpha(1)
         .setAngle(0)
-        .setPosition(x(H.witch.x) + (x(H.witch.xEnd) - x(H.witch.x)) * p, y(H.witch.y));
+        .setPosition(x(H.witch.x0) + (x(H.witch.x1) - x(H.witch.x0)) * p, y(H.witch.y));
       witchOn = true;
     }
     if (!witchOn) this.witch.setVisible(false);
 
+    let ghostOn = false;
+    let ghostA = 0;
+    for (const w of H.ghost.windows as WindowSec[]) {
+      if (!isActive(now, w.start * 1000, w.end * 1000)) continue;
+      const p = Math.min(1, Math.max(0, windowP(now, w.start, w.end)));
+      ghostA = ghostSheetAlpha(p, w.end - w.start);
+      ghostOn = true;
+    }
+    this.ghost.setVisible(ghostOn).setAlpha(ghostA).setPosition(x(H.ghost.x), y(H.ghost.y));
+
     this.clock.setText(`${this.video} ${formatTime(now)} x${this.speed}`);
+    this.editor?.tick(now);
   }
 }

@@ -3,13 +3,35 @@
   "loopSeconds": 900,
   "hunt": {
     "always": [
-      { "id": "pumpkin", "label": "P", "color": "#e67a22", "x": 360, "y": 150, "w": 16, "h": 14 },
-      { "id": "mushroom", "label": "M", "color": "#c0392b", "x": 430, "y": 230, "w": 12, "h": 12 }
+      {
+        "id": "pumpkin",
+        "label": "P",
+        "color": "#e67a22",
+        "x": 360,
+        "y": 150,
+        "w": 16,
+        "h": 14
+      },
+      {
+        "id": "mushroom",
+        "label": "M",
+        "color": "#c0392b",
+        "x": 430,
+        "y": 230,
+        "w": 12,
+        "h": 12
+      }
     ],
     "crow": {
       "windows": [
-        { "start": 60, "end": 66 },
-        { "start": 840, "end": 846 }
+        {
+          "start": 60,
+          "end": 66
+        },
+        {
+          "start": 840,
+          "end": 846
+        }
       ],
       "x0": -28,
       "x1": 508,
@@ -19,12 +41,28 @@
     },
     "witch": {
       "windows": [
-        { "start": 240, "end": 247 },
-        { "start": 660, "end": 667 }
+        {
+          "start": 240,
+          "end": 247
+        },
+        {
+          "start": 660,
+          "end": 667
+        }
       ],
-      "x": 516,
-      "xEnd": -36,
+      "x0": 516,
+      "x1": -36,
       "y": 45
+    },
+    "ghost": {
+      "windows": [
+        {
+          "start": 420,
+          "end": 484
+        }
+      ],
+      "x": 313,
+      "y": 39
     }
   }
 }

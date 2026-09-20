@@ -26,6 +26,113 @@
         overflow: hidden;
         background: #000;
       }
+      :root {
+        --ink: #f4e8c8;
+        --mute: #b8a888;
+        --line: #4a3d2c;
+        --panel: #1a1410ee;
+        --btn: #2c2418;
+        --btn-hi: #3d3224;
+        --go: #3a4a2c;
+        --save: #2c3a4a;
+      }
+      .panel {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        width: 392px;
+        max-height: calc(100% - 24px);
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 12px 14px 14px;
+        z-index: 4;
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        margin-top: 8px;
+      }
+      .head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      .head b {
+        font-size: 14px;
+      }
+      .block {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+      .block h2 {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .panel label {
+        color: var(--mute);
+        min-width: 36px;
+        flex: 0 0 auto;
+      }
+      .panel input {
+        width: 72px;
+        flex: 0 0 auto;
+        background: #0e0b08;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        padding: 3px 5px;
+        font: inherit;
+      }
+      .panel input.wide {
+        width: 78px;
+      }
+      .panel button {
+        background: var(--btn);
+        border: 1px solid var(--line);
+        color: var(--ink);
+        padding: 4px 10px;
+        flex: 0 0 auto;
+        font: inherit;
+        cursor: pointer;
+      }
+      .panel button:hover {
+        background: var(--btn-hi);
+      }
+      .panel button.go {
+        background: var(--go);
+      }
+      .panel button.save {
+        background: var(--save);
+        width: 100%;
+        margin-top: 12px;
+        padding: 7px;
+      }
+      .win {
+        background: #120e0a;
+        border: 1px solid var(--line);
+        padding: 6px;
+        margin-top: 6px;
+      }
+      .status {
+        min-height: 2.4em;
+        margin-top: 8px;
+        color: var(--mute);
+        white-space: pre-wrap;
+      }
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
