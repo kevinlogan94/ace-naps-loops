@@ -78,7 +78,7 @@ export class FallYardScene extends Phaser.Scene {
     const H = data.hunt;
 
     this.add.image(0, 0, 'yard').setOrigin(0).setDepth(0);
-    this.add.image(1950, -20, 'yard-tree').setOrigin(0).setDepth(7); // in front of crow
+    this.add.image(2105 , 10, 'yard-tree').setOrigin(0).setScale(1.45).setDepth(7); // in front of crow
     this.textures.get('crow').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('leaves').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('witch').setFilter(Phaser.Textures.FilterMode.NEAREST);
