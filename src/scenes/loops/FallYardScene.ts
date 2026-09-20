@@ -64,7 +64,7 @@ export class FallYardScene extends Phaser.Scene {
   private video = 'fall-yard';
   private clock!: Phaser.GameObjects.Text;
   private crow!: Phaser.GameObjects.Sprite;
-  private witch!: Phaser.GameObjects.Ellipse;
+  private witch!: Phaser.GameObjects.Image;
   private leaves: Phaser.GameObjects.Sprite[] = [];
   private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
 
@@ -81,6 +81,7 @@ export class FallYardScene extends Phaser.Scene {
     this.add.image(1950, -20, 'yard-tree').setOrigin(0).setDepth(7); // in front of crow
     this.textures.get('crow').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('leaves').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    this.textures.get('witch').setFilter(Phaser.Textures.FilterMode.NEAREST);
     if (!this.anims.exists('crow-fly')) {
       this.anims.create({
         key: 'crow-fly',
@@ -175,9 +176,11 @@ export class FallYardScene extends Phaser.Scene {
       .setVisible(false)
       .setDepth(6);
     this.witch = this.add
-      .ellipse(x(H.witch.x), y(H.witch.y), x(42), y(11), 0x0a0810, 0.35)
-      .setDepth(6)
-      .setScale(1.35, 1);
+      .image(x(H.witch.x), y(H.witch.y), 'witch')
+      .setOrigin(0.5)
+      .setScale(1.7)
+      .setVisible(false)
+      .setDepth(6);
 
     for (let i = 0; i < 10; i++) {
       const p = i < 4 ? canopySpawn(false) : canopySpawn(true);
@@ -246,9 +249,19 @@ export class FallYardScene extends Phaser.Scene {
     const wEnd = H.witch.end * 1000;
     if (isActive(now, wStart, wEnd)) {
       const p = Math.min(1, Math.max(0, windowP(now, H.witch.start, H.witch.end)));
-      this.witch.setPosition(x(H.witch.x) + (x(H.witch.xEnd) - x(H.witch.x)) * p, y(H.witch.y));
+      const fadeT = 1000 / (wEnd - wStart);
+      const fade = Math.min(1, p / fadeT, (1 - p) / fadeT);
+      this.witch
+        .setVisible(true)
+        .setFlipX(true)
+        .setAlpha(0.92 * fade)
+        .setAngle(8 + Math.sin(p * Math.PI * 4) * 4)
+        .setPosition(
+          x(H.witch.x) + (x(H.witch.xEnd) - x(H.witch.x)) * p,
+          y(H.witch.y) + Math.sin(p * Math.PI * 6) * y(5),
+        );
     } else {
-      this.witch.setPosition(now < wStart ? x(H.witch.x) : x(H.witch.xEnd), y(H.witch.y));
+      this.witch.setVisible(false);
     }
 
     this.clock.setText(`${this.video} ${formatTime(now)} x${this.speed}`);
