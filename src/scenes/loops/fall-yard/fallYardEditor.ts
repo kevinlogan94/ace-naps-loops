@@ -1,5 +1,5 @@
-import data from '../../data/videos/fall-yard.json';
-import { formatTime } from '../../systems/storyClock';
+import data from '../../../data/videos/fall-yard.json';
+import { formatTime } from '../../../systems/storyClock';
 
 type Win = { start: number; end: number };
 

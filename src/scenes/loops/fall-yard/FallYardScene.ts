@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
-import data from '../../data/videos/fall-yard.json';
-import { formatTime, isActive, wrap } from '../../systems/storyClock';
+import data from '../../../data/videos/fall-yard.json';
+import { PLATE_H, PLATE_W } from '../../../plate';
+import { formatTime, isActive, wrap } from '../../../systems/storyClock';
 import { mountFallYardEditor } from './fallYardEditor';
 
 type WindowSec = { start: number; end: number };
 
-/** Native size of public/assets/custom/fall-yard.jpg */
-export const PLATE_W = 2730;
-export const PLATE_H = 1536;
+const C = '/assets/custom';
 
 const SX = PLATE_W / 480;
 const SY = PLATE_H / 270;
@@ -85,6 +84,14 @@ export class FallYardScene extends Phaser.Scene {
 
   constructor() {
     super('FallYard');
+  }
+
+  preload(): void {
+    this.load.image('yard', `${C}/fall-yard.jpg`);
+    this.load.image('yard-tree', `${C}/tree-fall.png`);
+    this.load.spritesheet('crow', `${C}/crow-sheet.png`, { frameWidth: 512, frameHeight: 512 });
+    this.load.spritesheet('leaves', `${C}/leaves.png`, { frameWidth: 16, frameHeight: 16 });
+    this.load.image('witch', `${C}/witch.png`);
   }
 
   create(): void {

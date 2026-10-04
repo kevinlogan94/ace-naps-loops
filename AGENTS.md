@@ -18,7 +18,7 @@ Do not add Jest/Vitest/Playwright. Use a tiny `node scripts/*.mjs` assert script
 
 ## Scene colocation
 
-Loop-only helpers sit next to the scene under `src/scenes/`. Shared systems in `src/systems/`, data in `src/data/`.
+One folder per loop under `src/scenes/loops/<slug>/` (scene, editor, and that loop's helpers). Register the slug in `src/scenes/loops/index.ts`. Shared systems in `src/systems/`, clip JSON in `src/data/videos/`, plate size in `src/plate.ts`.
 
 ## Local only
 

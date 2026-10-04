@@ -17,14 +17,15 @@ The hunt lives in the YouTube description. It is not in-engine.
 ```bash
 pnpm install
 pnpm dev
-# http://localhost:5174/
+# http://localhost:5174/fall-yard
 ```
 
-## Query params
+## Routes
+
+Each loop is a path. `/` and `/fall-yard` are the fall yard loop. `/pumpkin-patch` is the pumpkin patch placeholder. Add the next one in `src/scenes/loops/index.ts`.
 
 | Param | Example | What it does |
 | --- | --- | --- |
-| `video` | `?video=fall-yard` | Which loop to load |
 | `speed` | `?speed=60` | Fast-forwards the **event clock** only |
 
 Record at `speed=1`. Higher speed is for previewing timed events, not for the capture.

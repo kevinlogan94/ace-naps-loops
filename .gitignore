@@ -8,3 +8,8 @@ dist/
 .env
 .env.*
 *.bak
+
+# Local exports. Too big for GitHub.
+*.mov
+*.mp3
+*.mp4
