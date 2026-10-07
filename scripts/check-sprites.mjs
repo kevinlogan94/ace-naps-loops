@@ -13,10 +13,10 @@ function assert(ok, msg) {
 }
 
 const checks = [
-  ['public/assets/custom/leaves.png', 64, 16],
-  ['public/assets/custom/crow-sheet.png', 1024, 1024],
-  ['public/assets/custom/tree-fall.png', 5000, 2000],
-  ['public/assets/custom/witch.png', 192, 177],
+  ['src/scenes/loops/fall-yard/leaves.png', 64, 16],
+  ['src/scenes/loops/fall-yard/crow-sheet.png', 1024, 1024],
+  ['src/scenes/loops/fall-yard/tree-fall.png', 425, 1024],
+  ['src/scenes/loops/fall-yard/witch.png', 192, 177],
 ];
 
 for (const [path, w, h] of checks) {

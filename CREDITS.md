@@ -8,12 +8,12 @@ YouTube descriptions should repeat this attribution.
 
 | Asset | Notes |
 | --- | --- |
-| `public/assets/custom/fall-yard.jpg` | Generated autumn yard plate. |
+| `src/scenes/loops/fall-yard/fall-yard.jpg` | Generated autumn yard plate. |
 
 ## Custom
 
 | Asset | Notes |
 | --- | --- |
-| `public/assets/custom/leaves.png` | Falling autumn leaves. |
-| `public/assets/custom/crow-sheet.png` | Hunt crow fly cycle (2×2). |
-| `public/assets/custom/witch.png` | Hunt witch on a broom. |
+| `src/scenes/loops/fall-yard/leaves.png` | Falling autumn leaves. |
+| `src/scenes/loops/fall-yard/crow-sheet.png` | Hunt crow fly cycle (2×2). |
+| `src/scenes/loops/fall-yard/witch.png` | Hunt witch on a broom. |
