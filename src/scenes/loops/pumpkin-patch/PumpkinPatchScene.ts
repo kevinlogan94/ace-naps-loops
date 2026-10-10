@@ -21,6 +21,33 @@ const ACE_SCALE = 0.8;
 /** Back-yard leaves vanish at the top rail. They never cross into the foreground. */
 const FENCE_Y = 250;
 
+/** Two thirds of the first pebble. Small beside the pumpkins. */
+const SOOT_SCALE = 3/4;
+
+/** Grass gaps in source pixels, below the fence. */
+const SOOTS: { x: number; y: number }[][] = [
+  [
+    { x: 330, y: 445 },
+    { x: 320, y: 515 },
+    { x: 410, y: 515 },
+  ],
+  [
+    { x: 650, y: 530 },
+    { x: 530, y: 548 },
+    { x: 670, y: 548 },
+  ],
+  [
+    { x: 860, y: 410 },
+    { x: 810, y: 430 },
+    { x: 870, y: 450 },
+  ],
+  [
+    { x: 430, y: 330 },
+    { x: 500, y: 340 },
+    { x: 440, y: 370 },
+  ],
+];
+
 type Crown = {
   x0: number;
   x1: number;
@@ -103,6 +130,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
 
     this.makeCookTextures();
     this.cook(sx, sy);
+    this.spawnSoot(sx, sy);
   }
 
   /** Green brew in the mouth, bubbles that pop, and a short fire under the pot. */
@@ -243,6 +271,82 @@ export class PumpkinPatchScene extends Phaser.Scene {
     g.generateTexture('smoke-puff', 16, 16);
     g.destroy();
     this.textures.get('smoke-puff').setFilter(Phaser.Textures.FilterMode.NEAREST);
+  }
+
+  private spawnSoot(sx: number, sy: number): void {
+    if (!this.textures.exists('soot')) {
+      const g = this.add.graphics();
+      const cell = 2;
+      const rows = ['  ###  ', ' ##### ', '#######', '##w#w##', '#######', ' ##### ', '  ###  '];
+      const draw = (key: string, eyes: boolean) => {
+        rows.forEach((row, y) => {
+          for (let x = 0; x < row.length; x++) {
+            if (row[x] === ' ') continue;
+            g.fillStyle(eyes && row[x] === 'w' ? 0xffffff : 0x2a2826);
+            g.fillRect(x * cell, y * cell, cell, cell);
+          }
+        });
+        g.generateTexture(key, rows[0].length * cell, rows.length * cell);
+        g.clear();
+      };
+      draw('soot', true);
+      draw('soot-shut', false);
+      g.destroy();
+      for (const key of ['soot', 'soot-shut']) {
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      }
+    }
+
+    const scale = sx * SOOT_SCALE;
+    SOOTS.forEach((points, i) => {
+      const home = points[0];
+      const soot = this.add
+        .image(home.x * sx, home.y * sy, 'soot')
+        .setOrigin(0.5, 1)
+        .setDepth(1 + home.y / SRC_H)
+        .setScale(scale);
+      this.time.delayedCall(i * 220, () => this.hopSoot(soot, points, 1, sx, sy));
+      this.time.delayedCall(i * 500, () => this.blinkSoot(soot));
+    });
+  }
+
+  private blinkSoot(soot: Phaser.GameObjects.Image): void {
+    this.time.delayedCall(Phaser.Math.Between(1800, 4200), () => {
+      soot.setTexture('soot-shut');
+      this.time.delayedCall(140, () => {
+        soot.setTexture('soot');
+        this.blinkSoot(soot);
+      });
+    });
+  }
+
+  private hopSoot(
+    soot: Phaser.GameObjects.Image,
+    points: { x: number; y: number }[],
+    step: number,
+    sx: number,
+    sy: number,
+  ): void {
+    const next = points[step % points.length];
+    const scale = sx * SOOT_SCALE;
+    this.time.delayedCall(Phaser.Math.Between(1200, 2400), () => {
+      soot.setScale(scale).setDepth(1 + next.y / SRC_H);
+      this.tweens.add({
+        targets: soot,
+        x: next.x * sx,
+        y: next.y * sy,
+        duration: Phaser.Math.Between(1100, 1700),
+        ease: 'Sine.easeInOut',
+        onComplete: () => this.hopSoot(soot, points, step + 1, sx, sy),
+      });
+      this.tweens.add({
+        targets: soot,
+        scaleY: scale * 0.86,
+        duration: 90,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      });
+    });
   }
 
   private emitSmoke(x: number, y: number, sx: number): void {
