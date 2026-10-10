@@ -9,6 +9,14 @@ const SRC_W = 1024;
 const SRC_H = 571;
 const BED = { x: 520, y: 412 };
 const CHIMNEY = { x: 675, y: 47 };
+/** Mouth of the cauldron. The rim is painted into the plate, so the brew stays inside it. */
+const POT = { x: 628, y: 320 };
+/** Flame bases, in the glow under the belly and between the feet. */
+const FIRES = [
+  { x: 614, y: 360 },
+  { x: 628, y: 364 },
+  { x: 642, y: 360 },
+];
 const ACE_SCALE = 0.8;
 /** Back-yard leaves vanish at the top rail. They never cross into the foreground. */
 const FENCE_Y = 250;
@@ -92,6 +100,124 @@ export class PumpkinPatchScene extends Phaser.Scene {
     const puff = () => this.emitSmoke(CHIMNEY.x * sx, CHIMNEY.y * sy, sx);
     puff();
     this.time.addEvent({ delay: 500, loop: true, callback: puff });
+
+    this.makeCookTextures();
+    this.cook(sx, sy);
+  }
+
+  /** Green brew in the mouth, bubbles that pop, and a short fire under the pot. */
+  private cook(sx: number, sy: number): void {
+    const brew = this.add.image(POT.x * sx, POT.y * sy, 'brew').setDepth(1).setScale(sx);
+    this.tweens.add({
+      targets: brew,
+      scaleY: sx * 0.75,
+      y: brew.y + sy,
+      duration: 460,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const bubble = () => this.emitBubble(POT.x * sx, POT.y * sy, sx);
+    bubble();
+    this.time.addEvent({ delay: 340, loop: true, callback: bubble });
+
+    FIRES.forEach((fire, i) => {
+      const scale = sx * (0.4 + (i % 2) * 0.25);
+      const flame = this.add
+        .image(fire.x * sx, fire.y * sy, 'flame')
+        .setOrigin(0.5, 1)
+        .setDepth(1)
+        .setScale(scale);
+      this.tweens.add({
+        targets: flame,
+        scaleX: scale * 0.9,
+        scaleY: scale * 1.35,
+        duration: 180 + i * 70,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+      this.time.addEvent({
+        delay: 140 + i * 40,
+        loop: true,
+        callback: () => flame.setTint(Phaser.Math.RND.pick([0xffffff, 0xfff0b0, 0xffb060])),
+      });
+    });
+  }
+
+  private emitBubble(x: number, y: number, sx: number): void {
+    const bubble = this.add
+      .image(x + Phaser.Math.Between(-8, 8) * sx, y, 'bubble')
+      .setDepth(1)
+      .setScale(sx * 0.55)
+      .setAlpha(0.95);
+    this.tweens.add({
+      targets: bubble,
+      y: bubble.y - Phaser.Math.Between(8, 16) * sx,
+      duration: Phaser.Math.Between(380, 640),
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: bubble,
+          scale: sx * 1.8,
+          alpha: 0,
+          duration: 140,
+          onComplete: () => bubble.destroy(),
+        });
+      },
+    });
+  }
+
+  /** Chunky brew, bubble, and flame. Nearest filtering keeps them pixelated. */
+  private makeCookTextures(): void {
+    if (this.textures.exists('brew')) return;
+    const g = this.add.graphics();
+    const brewW = 28;
+    const brewH = 8;
+    for (let y = 0; y < brewH; y += 2) {
+      for (let x = 0; x < brewW; x += 2) {
+        const nx = ((x + 1) / brewW) * 2 - 1;
+        const ny = ((y + 1) / brewH) * 2 - 1;
+        const d = nx * nx + ny * ny;
+        if (d > 1) continue;
+        g.fillStyle(d > 0.62 ? 0x1c6e20 : y < 4 ? 0x92e25a : 0x3cb43a);
+        g.fillRect(x, y, 2, 2);
+      }
+    }
+    g.generateTexture('brew', brewW, brewH);
+    g.clear();
+
+    g.fillStyle(0xd8ffb0);
+    for (const [x, y] of [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+      [1, 2],
+    ]) {
+      g.fillRect(x * 2, y * 2, 2, 2);
+    }
+    g.fillStyle(0xffffff);
+    g.fillRect(2, 2, 2, 2);
+    g.generateTexture('bubble', 6, 6);
+    g.clear();
+
+    const cells = ['  y  ', ' yyy ', ' yoy ', 'yoooy', 'yoooy', 'rooor', 'rooor', ' rrr '];
+    const color: Record<string, number> = { y: 0xffe14a, o: 0xff7a1a, r: 0xe23b12 };
+    cells.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        const fill = color[row[x]];
+        if (!fill) continue;
+        g.fillStyle(fill);
+        g.fillRect(x * 2, y * 2, 2, 2);
+      }
+    });
+    g.generateTexture('flame', 10, 16);
+    g.destroy();
+    for (const key of ['brew', 'bubble', 'flame']) {
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    }
   }
 
   /** One chunky gray puff. Scaled up with nearest filtering so it stays pixelated. */
