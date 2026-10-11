@@ -22,7 +22,13 @@ const ACE_SCALE = 0.8;
 const FENCE_Y = 250;
 
 /** Two thirds of the first pebble. Small beside the pumpkins. */
-const SOOT_SCALE = 3/4;
+const SOOT_SCALE = 3 / 4;
+/** Drawn texture is 14px. This is its height in source pixels. Eyes sit near the top. */
+const SOOT_SRC_H = 14 * SOOT_SCALE * (PLATE_W / SRC_W) / (PLATE_H / SRC_H);
+/** Source pixels of head that clear a prop while peeking. */
+const PEEK = 6;
+/** Cottage leaves pass the path soot at about 64. Right-tree leaves pass the right soot at about 82. */
+const LEAF_SCARE = 88;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -47,6 +53,32 @@ const SOOTS: { x: number; y: number }[][] = [
     { x: 440, y: 370 },
   ],
 ];
+
+/** Crop is the painted prop, in source pixels. Hide is inside that crop. */
+const COVERS: {
+  crop: { x: number; y: number; w: number; h: number };
+  hide: { x: number; y: number };
+}[] = [
+  // Big pumpkin in the bottom-left foreground.
+  { crop: { x: 0, y: 478, w: 122, h: 93 }, hide: { x: 68, y: 500 } },
+  // Wheel. The leaf pile stays out of the crop.
+  { crop: { x: 558, y: 464, w: 60, h: 62 }, hide: { x: 592, y: 484 } },
+  // Hay bales beside the scarecrow.
+  { crop: { x: 944, y: 328, w: 62, h: 72 }, hide: { x: 974, y: 350 } },
+  // Small pumpkin on the path.
+  { crop: { x: 384, y: 334, w: 44, h: 34 }, hide: { x: 406, y: 356 } },
+];
+
+type Soot = {
+  sprite: Phaser.GameObjects.Image;
+  points: { x: number; y: number }[];
+  hide: { x: number; y: number };
+  /** Top of the prop crop. The peek puts the eyes just above it. */
+  rim: number;
+  step: number;
+  mood: 'open' | 'bolt' | 'hide' | 'peek' | 'creep';
+  wait?: Phaser.Time.TimerEvent;
+};
 
 type Crown = {
   x0: number;
@@ -79,6 +111,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private sx = 1;
   private sy = 1;
   private leaves: { sprite: Phaser.GameObjects.Sprite; tree: number }[] = [];
+  private soots: Soot[] = [];
 
   constructor() {
     super('PumpkinPatch');
@@ -297,55 +330,158 @@ export class PumpkinPatchScene extends Phaser.Scene {
       }
     }
 
+    this.soots = [];
+    COVERS.forEach((cover) => {
+      // ponytail: a hide outside its crop stands on top of the prop. Upgrade path is a drawn mask.
+      const top = cover.hide.y - SOOT_SRC_H;
+      if (top < cover.crop.y || cover.hide.y > cover.crop.y + cover.crop.h) {
+        throw new Error('soot hide is outside its cover');
+      }
+      const { x, y, w, h } = cover.crop;
+      this.add
+        .image(0, 0, 'patch')
+        .setOrigin(0, 0)
+        .setDisplaySize(PLATE_W, PLATE_H)
+        .setDepth(3)
+        .setCrop(x, y, w, h);
+    });
+
     const scale = sx * SOOT_SCALE;
     SOOTS.forEach((points, i) => {
       const home = points[0];
-      const soot = this.add
+      const cover = COVERS[i];
+      const sprite = this.add
         .image(home.x * sx, home.y * sy, 'soot')
         .setOrigin(0.5, 1)
         .setDepth(1 + home.y / SRC_H)
         .setScale(scale);
-      this.time.delayedCall(i * 220, () => this.hopSoot(soot, points, 1, sx, sy));
+      const soot: Soot = {
+        sprite,
+        points,
+        hide: cover.hide,
+        rim: cover.crop.y,
+        step: 0,
+        mood: 'open',
+      };
+      this.soots.push(soot);
+      this.waitSoot(soot, i * 900);
       this.time.delayedCall(i * 500, () => this.blinkSoot(soot));
     });
   }
 
-  private blinkSoot(soot: Phaser.GameObjects.Image): void {
+  /** Eyes only while it is out. The peek blinks on its own. */
+  private blinkSoot(soot: Soot): void {
     this.time.delayedCall(Phaser.Math.Between(1800, 4200), () => {
-      soot.setTexture('soot-shut');
+      if (soot.mood !== 'open') {
+        this.blinkSoot(soot);
+        return;
+      }
+      soot.sprite.setTexture('soot-shut');
       this.time.delayedCall(140, () => {
-        soot.setTexture('soot');
+        if (soot.mood === 'open') soot.sprite.setTexture('soot');
         this.blinkSoot(soot);
       });
     });
   }
 
-  private hopSoot(
-    soot: Phaser.GameObjects.Image,
-    points: { x: number; y: number }[],
-    step: number,
-    sx: number,
-    sy: number,
-  ): void {
-    const next = points[step % points.length];
-    const scale = sx * SOOT_SCALE;
-    this.time.delayedCall(Phaser.Math.Between(1200, 2400), () => {
-      soot.setScale(scale).setDepth(1 + next.y / SRC_H);
-      this.tweens.add({
-        targets: soot,
-        x: next.x * sx,
-        y: next.y * sy,
-        duration: Phaser.Math.Between(1100, 1700),
-        ease: 'Sine.easeInOut',
-        onComplete: () => this.hopSoot(soot, points, step + 1, sx, sy),
-      });
-      this.tweens.add({
-        targets: soot,
-        scaleY: scale * 0.86,
-        duration: 90,
-        yoyo: true,
-        ease: 'Quad.easeOut',
-      });
+  private waitSoot(soot: Soot, extra = 0): void {
+    soot.mood = 'open';
+    soot.sprite.setTexture('soot');
+    this.trembleSoot(soot);
+    soot.wait = this.time.delayedCall(Phaser.Math.Between(2200, 4000) + extra, () => {
+      soot.wait = undefined;
+      this.boltSoot(soot);
+    });
+  }
+
+  /** One source pixel. It already regrets being out. */
+  private trembleSoot(soot: Soot): void {
+    this.tweens.add({
+      targets: soot.sprite,
+      x: soot.sprite.x + this.sx,
+      duration: 90,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private boltSoot(soot: Soot): void {
+    if (soot.mood !== 'open') return;
+    soot.mood = 'bolt';
+    soot.wait?.remove(false);
+    soot.wait = undefined;
+    this.tweens.killTweensOf(soot.sprite);
+    const scale = this.sx * SOOT_SCALE;
+    soot.sprite.setTexture('soot').setScale(scale).setDepth(1 + soot.hide.y / SRC_H);
+    this.tweens.add({
+      targets: soot.sprite,
+      x: soot.hide.x * this.sx,
+      y: soot.hide.y * this.sy,
+      duration: Phaser.Math.Between(350, 500),
+      ease: 'Quad.easeIn',
+      onComplete: () => this.hideSoot(soot),
+    });
+    this.tweens.add({
+      targets: soot.sprite,
+      scaleY: scale * 0.86,
+      duration: 90,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+    });
+  }
+
+  private hideSoot(soot: Soot): void {
+    soot.mood = 'hide';
+    this.time.delayedCall(Phaser.Math.Between(1500, 2500), () => this.peekSoot(soot));
+  }
+
+  private peekSoot(soot: Soot): void {
+    soot.mood = 'peek';
+    const y = (soot.rim + SOOT_SRC_H - PEEK) * this.sy;
+    this.tweens.add({
+      targets: soot.sprite,
+      x: soot.hide.x * this.sx,
+      y,
+      duration: Phaser.Math.Between(280, 420),
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        soot.sprite.setTexture('soot-shut');
+        this.time.delayedCall(140, () => {
+          soot.sprite.setTexture('soot');
+          this.time.delayedCall(Phaser.Math.Between(700, 1100), () => this.yankSoot(soot));
+        });
+      },
+    });
+  }
+
+  private yankSoot(soot: Soot): void {
+    soot.mood = 'hide';
+    this.tweens.add({
+      targets: soot.sprite,
+      x: soot.hide.x * this.sx,
+      y: soot.hide.y * this.sy,
+      duration: Phaser.Math.Between(140, 200),
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        this.time.delayedCall(Phaser.Math.Between(400, 800), () => this.creepSoot(soot));
+      },
+    });
+  }
+
+  private creepSoot(soot: Soot): void {
+    soot.mood = 'creep';
+    soot.step = (soot.step + 1) % soot.points.length;
+    const next = soot.points[soot.step];
+    const scale = this.sx * SOOT_SCALE;
+    soot.sprite.setScale(scale).setDepth(1 + next.y / SRC_H);
+    this.tweens.add({
+      targets: soot.sprite,
+      x: next.x * this.sx,
+      y: next.y * this.sy,
+      duration: Phaser.Math.Between(1100, 1700),
+      ease: 'Sine.easeInOut',
+      onComplete: () => this.waitSoot(soot),
     });
   }
 
@@ -377,11 +513,25 @@ export class PumpkinPatchScene extends Phaser.Scene {
       leaf.x += vis * this.sx * (crown.wind + wobble);
       leaf.y += vis * this.sy * 20;
       leaf.angle += vis * (40 + (i % 5) * 12);
+      this.scareSoot(leaf);
       const srcY = leaf.y / this.sy;
       if (crown.stopY < SRC_H) {
         leaf.setAlpha(Math.max(0, Math.min(1, (crown.stopY - srcY) / crown.fade)));
       }
       if (srcY >= crown.stopY || leaf.x > PLATE_W + 40) this.dropLeaf(i, false);
+    }
+  }
+
+  /** A nearby falling leaf sends an open soot into its hide. */
+  private scareSoot(leaf: Phaser.GameObjects.Sprite): void {
+    const lx = leaf.x / this.sx;
+    const ly = leaf.y / this.sy;
+    for (let i = 0; i < this.soots.length; i++) {
+      const soot = this.soots[i];
+      if (soot.mood !== 'open') continue;
+      const dx = soot.sprite.x / this.sx - lx;
+      const dy = soot.sprite.y / this.sy - ly;
+      if (dx * dx + dy * dy < LEAF_SCARE * LEAF_SCARE) this.boltSoot(soot);
     }
   }
 
