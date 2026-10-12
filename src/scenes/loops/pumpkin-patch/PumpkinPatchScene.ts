@@ -29,6 +29,8 @@ const SOOT_SRC_H = 14 * SOOT_SCALE * (PLATE_W / SRC_W) / (PLATE_H / SRC_H);
 const PEEK = 6;
 /** Cottage leaves pass the path soot at about 64. Right-tree leaves pass the right soot at about 82. */
 const LEAF_SCARE = 88;
+/** One soot's full grass pass, then the next. Four soots means each waits 12 minutes. */
+const SOOT_GAP = 3 * 60 * 1000;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -112,6 +114,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private sy = 1;
   private leaves: { sprite: Phaser.GameObjects.Sprite; tree: number }[] = [];
   private soots: Soot[] = [];
+  private sootTurn = 0;
 
   constructor() {
     super('PumpkinPatch');
@@ -348,25 +351,26 @@ export class PumpkinPatchScene extends Phaser.Scene {
 
     const scale = sx * SOOT_SCALE;
     SOOTS.forEach((points, i) => {
-      const home = points[0];
       const cover = COVERS[i];
       const sprite = this.add
-        .image(home.x * sx, home.y * sy, 'soot')
+        .image(cover.hide.x * sx, cover.hide.y * sy, 'soot')
         .setOrigin(0.5, 1)
-        .setDepth(1 + home.y / SRC_H)
+        .setDepth(1 + cover.hide.y / SRC_H)
         .setScale(scale);
       const soot: Soot = {
         sprite,
         points,
         hide: cover.hide,
         rim: cover.crop.y,
-        step: 0,
-        mood: 'open',
+        step: points.length - 1,
+        mood: 'hide',
       };
       this.soots.push(soot);
-      this.waitSoot(soot, i * 900);
       this.time.delayedCall(i * 500, () => this.blinkSoot(soot));
     });
+    const nextSoot = () => this.creepSoot(this.soots[this.sootTurn++ % this.soots.length]);
+    nextSoot();
+    this.time.addEvent({ delay: SOOT_GAP, loop: true, callback: nextSoot });
   }
 
   /** Eyes only while it is out. The peek blinks on its own. */
@@ -384,11 +388,11 @@ export class PumpkinPatchScene extends Phaser.Scene {
     });
   }
 
-  private waitSoot(soot: Soot, extra = 0): void {
+  private waitSoot(soot: Soot): void {
     soot.mood = 'open';
     soot.sprite.setTexture('soot');
     this.trembleSoot(soot);
-    soot.wait = this.time.delayedCall(Phaser.Math.Between(2200, 4000) + extra, () => {
+    soot.wait = this.time.delayedCall(Phaser.Math.Between(2200, 4000), () => {
       soot.wait = undefined;
       this.boltSoot(soot);
     });
@@ -464,6 +468,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
       duration: Phaser.Math.Between(140, 200),
       ease: 'Quad.easeIn',
       onComplete: () => {
+        if (soot.step === soot.points.length - 1) return;
         this.time.delayedCall(Phaser.Math.Between(400, 800), () => this.creepSoot(soot));
       },
     });
