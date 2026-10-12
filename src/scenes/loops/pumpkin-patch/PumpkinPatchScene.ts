@@ -46,6 +46,17 @@ const WITCH_PACK = [
   { dx: 26, dy: 3 },
   { dx: 50, dy: -5 },
 ] as const;
+/** Rear is larger and lower. Stop left of the path pumpkin (crop at x 384). */
+const SHEETS = [
+  { x0: 20, x1: 230, y: 404, scale: 1.1 },
+  { x0: 95, x1: 305, y: 396, scale: 0.9 },
+] as const;
+const SHEET_ALPHA = 0.5;
+const SHEET_WALK = 7000;
+const SHEET_LAG = 900;
+const SHEET_HOLD = 5000;
+const SHEET_FADE = 1000;
+const SHEET_GAP = 90_000;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -131,6 +142,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private soots: Soot[] = [];
   private sootTurn = 0;
   private witches: Phaser.GameObjects.Image[] = [];
+  private sheets: Phaser.GameObjects.Graphics[] = [];
 
   constructor() {
     super('PumpkinPatch');
@@ -196,6 +208,101 @@ export class PumpkinPatchScene extends Phaser.Scene {
         .setVisible(false),
     );
     this.time.delayedCall(800, () => this.flyWitches());
+    this.sheets = [this.makeSheet(), this.makeSheet()];
+    this.time.delayedCall(2500, () => this.visitSheets());
+  }
+
+  /** Dark sheet: oval head, scalloped hem, two pale eyes. */
+  private makeSheet(): Phaser.GameObjects.Graphics {
+    const g = this.add.graphics().setDepth(3.1).setVisible(false);
+    const gw = 18 * (PLATE_W / 480);
+    const gh = 36 * (PLATE_H / 270);
+    const rx = gw / 2;
+    const cy = -gh * 0.55;
+    const ry = gh * 0.36;
+    const hem = gh * 0.05;
+    const dip = gh * 0.08;
+    g.fillStyle(0x16101c, 1);
+    g.beginPath();
+    g.moveTo(-rx, cy);
+    for (let i = 1; i <= 12; i++) {
+      const a = Math.PI + (Math.PI * i) / 12;
+      g.lineTo(Math.cos(a) * rx, cy + Math.sin(a) * ry);
+    }
+    for (let i = 0; i <= 6; i++) {
+      const t = i / 6;
+      g.lineTo(rx - t * 2 * rx, hem + Math.abs(Math.sin(t * Math.PI * 3)) * dip);
+    }
+    g.closePath();
+    g.fillPath();
+    g.fillStyle(0xd8d0e0, 0.75);
+    g.fillEllipse(-rx * 0.28, cy - ry * 0.28, rx * 0.22, ry * 0.28);
+    g.fillEllipse(rx * 0.28, cy - ry * 0.28, rx * 0.22, ry * 0.28);
+    return g;
+  }
+
+  private parkSheet(i: number): void {
+    const spot = SHEETS[i];
+    const g = this.sheets[i];
+    this.tweens.killTweensOf(g);
+    g.setVisible(false)
+      .setAlpha(0)
+      .setAngle(0)
+      .setScale(spot.scale)
+      .setPosition(spot.x0 * this.sx, spot.y * this.sy);
+  }
+
+  /** Up the path, stand, walk back off. */
+  private visitSheets(): void {
+    this.sheets.forEach((_, i) => this.parkSheet(i));
+    const { sx, sy } = this;
+    SHEETS.forEach((spot, i) => {
+      const g = this.sheets[i];
+      this.time.delayedCall(i * SHEET_LAG, () => {
+        g.setVisible(true);
+        this.tweens.add({ targets: g, alpha: SHEET_ALPHA, duration: 500 });
+        this.tweens.add({
+          targets: g,
+          x: spot.x1 * sx,
+          duration: SHEET_WALK,
+          ease: 'Sine.easeInOut',
+        });
+        this.tweens.add({
+          targets: g,
+          y: spot.y * sy + 3 * sy,
+          duration: 700,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      });
+    });
+    this.time.delayedCall(SHEET_LAG + SHEET_WALK + SHEET_HOLD, () => this.leaveSheets());
+  }
+
+  private leaveSheets(): void {
+    SHEETS.forEach((spot, i) => {
+      const g = this.sheets[i];
+      const delay = i * SHEET_LAG;
+      this.tweens.add({
+        targets: g,
+        x: spot.x0 * this.sx,
+        duration: SHEET_WALK,
+        delay,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          if (i !== SHEETS.length - 1) return;
+          this.sheets.forEach((_, j) => this.parkSheet(j));
+          this.time.delayedCall(SHEET_GAP, () => this.visitSheets());
+        },
+      });
+      this.tweens.add({
+        targets: g,
+        alpha: 0,
+        duration: SHEET_FADE,
+        delay: delay + SHEET_WALK - SHEET_FADE,
+      });
+    });
   }
 
   /** Tiny far pack over the orchard, then they wait and go again. */
