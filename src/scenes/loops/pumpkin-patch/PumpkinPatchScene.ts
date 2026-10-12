@@ -36,10 +36,16 @@ const PEEK = 6;
 const LEAF_SCARE = 88;
 /** One soot's full grass pass, then the next. Four soots means each waits 12 minutes. */
 const SOOT_GAP = 3 * 60 * 1000;
-/** Off the right edge, high in the sky. She faces left, so she crosses right to left. */
+/** Off the right edge, high in the sky. They face left, so they cross right to left. */
 const WITCH = { x0: SRC_W + 40, x1: -48, y: 32, scale: 0.08 };
 const WITCH_MS = 22_000;
 const WITCH_GAP = 90_000;
+/** Three of the same silhouette. dx is behind the lead. */
+const WITCH_PACK = [
+  { dx: 0, dy: 0 },
+  { dx: 26, dy: 3 },
+  { dx: 50, dy: -5 },
+] as const;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -124,7 +130,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private leaves: { sprite: Phaser.GameObjects.Sprite; tree: number }[] = [];
   private soots: Soot[] = [];
   private sootTurn = 0;
-  private witch!: Phaser.GameObjects.Image;
+  private witches: Phaser.GameObjects.Image[] = [];
 
   constructor() {
     super('PumpkinPatch');
@@ -181,39 +187,48 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.spawnSoot(sx, sy);
     this.blinkScarecrow(sx, sy);
 
-    this.witch = this.add
-      .image(WITCH.x0 * sx, WITCH.y * sy, 'witch-silhouette')
-      .setOrigin(0.5)
-      .setScale(sx * WITCH.scale)
-      .setDepth(2)
-      .setVisible(false);
-    this.time.delayedCall(800, () => this.flyWitch());
+    this.witches = WITCH_PACK.map((w) =>
+      this.add
+        .image((WITCH.x0 + w.dx) * sx, (WITCH.y + w.dy) * sy, 'witch-silhouette')
+        .setOrigin(0.5)
+        .setScale(sx * WITCH.scale)
+        .setDepth(2)
+        .setVisible(false),
+    );
+    this.time.delayedCall(800, () => this.flyWitches());
   }
 
-  /** Tiny far pass over the orchard, then she waits and goes again. */
-  private flyWitch(): void {
+  /** Tiny far pack over the orchard, then they wait and go again. */
+  private flyWitches(): void {
     const { sx, sy } = this;
-    this.tweens.killTweensOf(this.witch);
-    this.witch.setVisible(true).setScale(sx * WITCH.scale).setPosition(WITCH.x0 * sx, WITCH.y * sy).setAngle(-6);
-    this.tweens.add({
-      targets: this.witch,
-      x: WITCH.x1 * sx,
-      duration: WITCH_MS,
-      ease: 'Linear',
-      onComplete: () => {
-        this.tweens.killTweensOf(this.witch);
-        this.witch.setVisible(false);
-        this.time.delayedCall(WITCH_GAP, () => this.flyWitch());
-      },
-    });
-    this.tweens.add({
-      targets: this.witch,
-      y: WITCH.y * sy + 3 * sy,
-      angle: 6,
-      duration: 1400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
+    WITCH_PACK.forEach((w, i) => {
+      const sprite = this.witches[i];
+      this.tweens.killTweensOf(sprite);
+      sprite
+        .setVisible(true)
+        .setScale(sx * WITCH.scale)
+        .setPosition((WITCH.x0 + w.dx) * sx, (WITCH.y + w.dy) * sy)
+        .setAngle(-6);
+      this.tweens.add({
+        targets: sprite,
+        x: (WITCH.x1 + w.dx) * sx,
+        duration: WITCH_MS,
+        ease: 'Linear',
+        onComplete: () => {
+          this.tweens.killTweensOf(sprite);
+          sprite.setVisible(false);
+          if (i === 0) this.time.delayedCall(WITCH_GAP, () => this.flyWitches());
+        },
+      });
+      this.tweens.add({
+        targets: sprite,
+        y: (WITCH.y + w.dy) * sy + 3 * sy,
+        angle: 6,
+        duration: 1200 + i * 180,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     });
   }
 
