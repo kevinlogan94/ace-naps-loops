@@ -3,6 +3,7 @@ import { PLATE_H, PLATE_W } from '../../../plate';
 import leavesUrl from '../fall-yard/leaves.png';
 import aceUrl from './ace.png';
 import patchUrl from './pumpkin-patch.jpg';
+import witchUrl from './witch-silhouette.png';
 
 /** Source plate is 1024×571. Positions below are in those pixels. */
 const SRC_W = 1024;
@@ -35,6 +36,10 @@ const PEEK = 6;
 const LEAF_SCARE = 88;
 /** One soot's full grass pass, then the next. Four soots means each waits 12 minutes. */
 const SOOT_GAP = 3 * 60 * 1000;
+/** Off the right edge, high in the sky. She faces left, so she crosses right to left. */
+const WITCH = { x0: SRC_W + 40, x1: -48, y: 32, scale: 0.08 };
+const WITCH_MS = 22_000;
+const WITCH_GAP = 90_000;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -119,6 +124,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private leaves: { sprite: Phaser.GameObjects.Sprite; tree: number }[] = [];
   private soots: Soot[] = [];
   private sootTurn = 0;
+  private witch!: Phaser.GameObjects.Image;
 
   constructor() {
     super('PumpkinPatch');
@@ -127,6 +133,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   preload(): void {
     this.load.image('patch', patchUrl);
     this.load.image('ace', aceUrl);
+    this.load.image('witch-silhouette', witchUrl);
     this.load.spritesheet('leaves', leavesUrl, { frameWidth: 16, frameHeight: 16 });
   }
 
@@ -137,6 +144,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.textures.get('patch').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('ace').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('leaves').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    this.textures.get('witch-silhouette').setFilter(Phaser.Textures.FilterMode.NEAREST);
 
     this.add.image(0, 0, 'patch').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(0);
 
@@ -172,6 +180,41 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.cook(sx, sy);
     this.spawnSoot(sx, sy);
     this.blinkScarecrow(sx, sy);
+
+    this.witch = this.add
+      .image(WITCH.x0 * sx, WITCH.y * sy, 'witch-silhouette')
+      .setOrigin(0.5)
+      .setScale(sx * WITCH.scale)
+      .setDepth(2)
+      .setVisible(false);
+    this.time.delayedCall(800, () => this.flyWitch());
+  }
+
+  /** Tiny far pass over the orchard, then she waits and goes again. */
+  private flyWitch(): void {
+    const { sx, sy } = this;
+    this.tweens.killTweensOf(this.witch);
+    this.witch.setVisible(true).setScale(sx * WITCH.scale).setPosition(WITCH.x0 * sx, WITCH.y * sy).setAngle(-6);
+    this.tweens.add({
+      targets: this.witch,
+      x: WITCH.x1 * sx,
+      duration: WITCH_MS,
+      ease: 'Linear',
+      onComplete: () => {
+        this.tweens.killTweensOf(this.witch);
+        this.witch.setVisible(false);
+        this.time.delayedCall(WITCH_GAP, () => this.flyWitch());
+      },
+    });
+    this.tweens.add({
+      targets: this.witch,
+      y: WITCH.y * sy + 3 * sy,
+      angle: 6,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   /**
