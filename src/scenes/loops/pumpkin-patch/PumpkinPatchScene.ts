@@ -57,6 +57,12 @@ const SHEET_LAG = 900;
 const SHEET_HOLD = 5000;
 const SHEET_FADE = 1000;
 const SHEET_GAP = 90_000;
+/** Lower right of the last orchard tree. Drops into the sky above the fence. */
+const SPIDER = { x: 358, y0: 186, y1: 236 };
+const SPIDER_DOWN = 1600;
+const SPIDER_HOLD = 1200;
+const SPIDER_UP = 1200;
+const SPIDER_GAP = 14_000;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -210,6 +216,92 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.time.delayedCall(800, () => this.flyWitches());
     this.sheets = [this.makeSheet(), this.makeSheet()];
     this.time.delayedCall(2500, () => this.visitSheets());
+    this.hangSpider(sx, sy);
+  }
+
+  /** Pixel spider on a thread. Down from an orchard tree, dangle, then back up. */
+  private hangSpider(sx: number, sy: number): void {
+    this.makeSpider();
+    const x = SPIDER.x * sx;
+    const y0 = SPIDER.y0 * sy;
+    const y1 = SPIDER.y1 * sy;
+    const thread = this.add
+      .rectangle(x, y0, 1, 1, 0x3a342c)
+      .setOrigin(0.5, 0)
+      .setDepth(2)
+      .setVisible(false);
+    const body = this.add
+      .image(x, y0, 'spider')
+      .setOrigin(0.5, 0)
+      .setScale(sx * 1.2)
+      .setDepth(2)
+      .setVisible(false);
+
+    const follow = () => {
+      const h = body.y - y0;
+      thread.setVisible(h > 1).setDisplaySize(thread.width, Math.max(1, h));
+    };
+
+    const climb = () => {
+      this.tweens.killTweensOf(body);
+      body.setX(x).setAngle(0);
+      this.tweens.add({
+        targets: body,
+        y: y0,
+        duration: SPIDER_UP,
+        ease: 'Sine.easeIn',
+        onUpdate: follow,
+        onComplete: () => {
+          body.setVisible(false);
+          thread.setVisible(false);
+          this.time.delayedCall(SPIDER_GAP, drop);
+        },
+      });
+    };
+
+    const drop = () => {
+      body.setVisible(true).setPosition(x, y0).setAngle(0);
+      follow();
+      this.tweens.add({
+        targets: body,
+        y: y1,
+        duration: SPIDER_DOWN,
+        ease: 'Sine.easeOut',
+        onUpdate: follow,
+        onComplete: () => {
+          this.tweens.add({
+            targets: body,
+            x: x + sx,
+            angle: 6,
+            duration: 280,
+            yoyo: true,
+            repeat: 3,
+            ease: 'Sine.easeInOut',
+          });
+          this.time.delayedCall(SPIDER_HOLD, climb);
+        },
+      });
+    };
+
+    this.time.delayedCall(2000, drop);
+  }
+
+  private makeSpider(): void {
+    if (this.textures.exists('spider')) return;
+    const g = this.add.graphics();
+    const cell = 1;
+    const rows = ['# # #', ' ### ', '#w#w#', ' ### ', '# # #'];
+    rows.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x];
+        if (ch === ' ') continue;
+        g.fillStyle(ch === 'w' ? 0xe8dcc8 : 0x1c1612);
+        g.fillRect(x * cell, y * cell, cell, cell);
+      }
+    });
+    g.generateTexture('spider', rows[0].length * cell, rows.length * cell);
+    g.destroy();
+    this.textures.get('spider').setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
 
   /** Dark sheet: oval head, scalloped hem, two pale eyes. */
