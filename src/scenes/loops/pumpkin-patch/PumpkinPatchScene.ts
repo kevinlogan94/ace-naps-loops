@@ -48,8 +48,8 @@ const SOOTS: { x: number; y: number }[][] = [
     { x: 870, y: 450 },
   ],
   [
-    { x: 430, y: 330 },
-    { x: 500, y: 340 },
+    { x: 450, y: 350 },
+    { x: 485, y: 365 },
     { x: 440, y: 370 },
   ],
 ];
@@ -59,12 +59,12 @@ const COVERS: {
   crop: { x: number; y: number; w: number; h: number };
   hide: { x: number; y: number };
 }[] = [
-  // Big pumpkin in the bottom-left foreground.
-  { crop: { x: 0, y: 478, w: 122, h: 93 }, hide: { x: 68, y: 500 } },
+  // Big pumpkin in the bottom-left foreground. Top is the stem. Right edge is that pumpkin only.
+  { crop: { x: 0, y: 448, w: 142, h: 123 }, hide: { x: 68, y: 500 } },
   // Wheel. The leaf pile stays out of the crop.
-  { crop: { x: 558, y: 464, w: 60, h: 62 }, hide: { x: 592, y: 484 } },
-  // Hay bales beside the scarecrow.
-  { crop: { x: 944, y: 328, w: 62, h: 72 }, hide: { x: 974, y: 350 } },
+  { crop: { x: 546, y: 455, w: 86, h: 92 }, hide: { x: 592, y: 484 } },
+  // Scarecrow and the hay he slips behind. Grass spots stay left of x 878.
+  { crop: { x: 878, y: 328, w: 146, h: 92 }, hide: { x: 974, y: 350 } },
   // Small pumpkin on the path.
   { crop: { x: 384, y: 334, w: 44, h: 34 }, hide: { x: 406, y: 356 } },
 ];
