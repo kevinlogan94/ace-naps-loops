@@ -18,6 +18,10 @@ const FIRES = [
   { x: 642, y: 360 },
 ];
 const ACE_SCALE = 0.8;
+/** Midpoint of the painted eyes. Lids sit six source pixels to either side. */
+const SCARE_FACE = { x: 906, y: 352 };
+/** Cheek color, so a full lid disappears into the face. */
+const SCARE_LID = 0xae6829;
 /** Back-yard leaves vanish at the top rail. They never cross into the foreground. */
 const FENCE_Y = 250;
 
@@ -167,6 +171,32 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.makeCookTextures();
     this.cook(sx, sy);
     this.spawnSoot(sx, sy);
+    this.blinkScarecrow(sx, sy);
+  }
+
+  /**
+   * Face-colored lids. They rest flat so the painted eyes show, then cover them.
+   * Depth matches the scarecrow crop, which is added first and would hide a lower lid.
+   */
+  private blinkScarecrow(sx: number, sy: number): void {
+    const lidH = 6 * sy;
+    const eyes = this.add
+      .container(SCARE_FACE.x * sx, SCARE_FACE.y * sy - lidH / 2)
+      .setDepth(3);
+    eyes.add([
+      this.add.rectangle(-6 * sx, 0, 7 * sx, lidH, SCARE_LID).setOrigin(0.5, 0),
+      this.add.rectangle(5 * sx, 0, 5 * sx, lidH, SCARE_LID).setOrigin(0.5, 0),
+    ]);
+    eyes.setScale(1, 0);
+    this.tweens.add({
+      targets: eyes,
+      scaleY: 1,
+      duration: 70,
+      yoyo: true,
+      hold: 40,
+      repeat: -1,
+      repeatDelay: 8000,
+    });
   }
 
   /** Green brew in the mouth, bubbles that pop, and a short fire under the pot. */
