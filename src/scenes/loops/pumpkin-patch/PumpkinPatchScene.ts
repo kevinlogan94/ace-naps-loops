@@ -3,6 +3,7 @@ import { PLATE_H, PLATE_W } from '../../../plate';
 import leavesUrl from '../fall-yard/leaves.png';
 import aceUrl from './ace.png';
 import patchUrl from './pumpkin-patch.jpg';
+import slenderUrl from './slender.png';
 import witchUrl from './witch-silhouette.png';
 
 /** Source plate is 1024×571. Positions below are in those pixels. */
@@ -63,6 +64,11 @@ const SPIDER_DOWN = 1600;
 const SPIDER_HOLD = 1200;
 const SPIDER_UP = 1200;
 const SPIDER_GAP = 14_000;
+/** Beside the left orchard tree. Origin is the feet (x center, y bottom). */
+const SLENDER = { x: 100, y: 266, scale: 0.2 };
+const SLENDER_HOLD = 10_000;
+const SLENDER_GAP = 90_000;
+const STATIC_MS = 640;
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -160,6 +166,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.load.image('patch', patchUrl);
     this.load.image('ace', aceUrl);
     this.load.image('witch-silhouette', witchUrl);
+    this.load.image('slender', slenderUrl);
     this.load.spritesheet('leaves', leavesUrl, { frameWidth: 16, frameHeight: 16 });
   }
 
@@ -171,6 +178,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.textures.get('ace').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('leaves').setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.textures.get('witch-silhouette').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    this.textures.get('slender').setFilter(Phaser.Textures.FilterMode.NEAREST);
 
     this.add.image(0, 0, 'patch').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(0);
 
@@ -239,6 +247,88 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.sheets = [this.makeSheet(), this.makeSheet()];
     this.time.delayedCall(2500, () => this.visitSheets());
     this.hangSpider(sx, sy);
+    this.hauntSlender(sx, sy);
+  }
+
+  /** Full-plate snow. He flips on at the middle of the burst, off the same way. */
+  private hauntSlender(sx: number, sy: number): void {
+    this.makeStatic();
+    const shade = this.add
+      .ellipse(SLENDER.x * sx, (SLENDER.y + 2) * sy, 22 * sx, 7 * sy, 0x4a2814, 0.4)
+      .setDepth(0.85)
+      .setVisible(false);
+    const body = this.add
+      .image(SLENDER.x * sx, SLENDER.y * sy, 'slender')
+      .setOrigin(0.5, 1)
+      .setScale(sx * SLENDER.scale)
+      .setDepth(0.9)
+      .setVisible(false);
+    const snow = this.add
+      .image(0, 0, 'static-0')
+      .setOrigin(0)
+      .setDisplaySize(PLATE_W, PLATE_H)
+      .setDepth(20)
+      .setVisible(false);
+
+    const burst = (flip: () => void, then: () => void) => {
+      let frame = 0;
+      snow.setVisible(true).setTexture('static-0').setAlpha(1);
+      const tick = this.time.addEvent({
+        delay: 40,
+        repeat: Math.ceil(STATIC_MS / 40) - 1,
+        callback: () => {
+          frame = (frame + 1) % 4;
+          snow.setTexture(`static-${frame}`).setAlpha(Phaser.Math.FloatBetween(0.7, 1));
+        },
+      });
+      this.time.delayedCall(STATIC_MS / 2, flip);
+      this.time.delayedCall(STATIC_MS, () => {
+        tick.remove(false);
+        snow.setVisible(false);
+        then();
+      });
+    };
+
+    const hide = () => {
+      burst(
+        () => {
+          body.setVisible(false);
+          shade.setVisible(false);
+        },
+        () => this.time.delayedCall(SLENDER_GAP, show),
+      );
+    };
+
+    const show = () => {
+      burst(
+        () => {
+          body.setVisible(true);
+          shade.setVisible(true);
+        },
+        () => this.time.delayedCall(SLENDER_HOLD, hide),
+      );
+    };
+
+    this.time.delayedCall(8000, show);
+  }
+
+  private makeStatic(): void {
+    if (this.textures.exists('static-0')) return;
+    const g = this.add.graphics();
+    const w = 80;
+    const h = 45;
+    for (let i = 0; i < 4; i++) {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          g.fillStyle(Phaser.Math.Between(0, 1) ? 0xffffff : 0x111111);
+          g.fillRect(x, y, 1, 1);
+        }
+      }
+      g.generateTexture(`static-${i}`, w, h);
+      g.clear();
+      this.textures.get(`static-${i}`).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    }
+    g.destroy();
   }
 
   /** Pixel spider on a thread. Down from an orchard tree, dangle, then back up. */
