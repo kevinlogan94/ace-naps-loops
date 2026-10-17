@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PLATE_H, PLATE_W } from '../../../plate';
+import { crossedBeat, wrap } from '../../../systems/storyClock';
 import leavesUrl from '../fall-yard/leaves.png';
 import aceUrl from './ace.png';
 import patchUrl from './pumpkin-patch.jpg';
@@ -40,7 +41,6 @@ const SOOT_GAP = 3 * 60 * 1000;
 /** Off the right edge, high in the sky. They face left, so they cross right to left. */
 const WITCH = { x0: SRC_W + 40, x1: -48, y: 32, scale: 0.08 };
 const WITCH_MS = 22_000;
-const WITCH_GAP = 90_000;
 /** Three of the same silhouette. dx is behind the lead. */
 const WITCH_PACK = [
   { dx: 0, dy: 0 },
@@ -57,18 +57,26 @@ const SHEET_WALK = 7000;
 const SHEET_LAG = 900;
 const SHEET_HOLD = 5000;
 const SHEET_FADE = 1000;
-const SHEET_GAP = 90_000;
 /** Lower right of the last orchard tree. Drops into the sky above the fence. */
 const SPIDER = { x: 358, y0: 186, y1: 236 };
 const SPIDER_DOWN = 1600;
 const SPIDER_HOLD = 1200;
 const SPIDER_UP = 1200;
-const SPIDER_GAP = 14_000;
 /** Beside the left orchard tree. Origin is the feet (x center, y bottom). */
 const SLENDER = { x: 100, y: 266, scale: 0.2 };
 const SLENDER_HOLD = 10_000;
-const SLENDER_GAP = 90_000;
 const STATIC_MS = 640;
+
+/** Visitors on the 15-minute clock. Soots keep their own 3-minute turn. */
+const BEATS: { sec: number; who: 'spider' | 'witches' | 'sheets' | 'slender' }[] = [
+  { sec: 60, who: 'spider' },
+  { sec: 240, who: 'witches' },
+  { sec: 420, who: 'sheets' },
+  { sec: 510, who: 'spider' },
+  { sec: 690, who: 'slender' },
+  { sec: 870, who: 'witches' },
+];
+const BEAT_MS = BEATS.map((b) => b.sec * 1000);
 
 /** Grass gaps in source pixels, below the fence. */
 const SOOTS: { x: number; y: number }[][] = [
@@ -153,10 +161,17 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private leaves: { sprite: Phaser.GameObjects.Sprite; tree: number }[] = [];
   private soots: Soot[] = [];
   private sootTurn = 0;
+  /** Sheets or Slender on screen. Soots stay in their hides until this is 0. */
+  private sootHolds = 0;
+  private sootDue = false;
   private witches: Phaser.GameObjects.Image[] = [];
   private sheets: Phaser.GameObjects.Graphics[] = [];
   private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
   private snout = { x: 0, y: 0 };
+  private storyMs = 0;
+  private speed = 1;
+  private dropSpider: () => void = () => {};
+  private showSlender: () => void = () => {};
 
   constructor() {
     super('PumpkinPatch');
@@ -171,6 +186,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.speed = Number(this.registry.get('speed') ?? 1) || 1;
     this.sx = PLATE_W / SRC_W;
     this.sy = PLATE_H / SRC_H;
     const { sx, sy } = this;
@@ -243,11 +259,17 @@ export class PumpkinPatchScene extends Phaser.Scene {
         .setDepth(2)
         .setVisible(false),
     );
-    this.time.delayedCall(800, () => this.flyWitches());
     this.sheets = [this.makeSheet(), this.makeSheet()];
-    this.time.delayedCall(2500, () => this.visitSheets());
     this.hangSpider(sx, sy);
     this.hauntSlender(sx, sy);
+  }
+
+  /** The clock calls this once, when a slot starts. */
+  private playBeat(who: (typeof BEATS)[number]['who']): void {
+    if (who === 'spider') this.dropSpider();
+    else if (who === 'witches') this.flyWitches();
+    else if (who === 'sheets') this.visitSheets();
+    else this.showSlender();
   }
 
   /** Full-plate snow. He flips on at the middle of the burst, off the same way. */
@@ -295,11 +317,12 @@ export class PumpkinPatchScene extends Phaser.Scene {
           body.setVisible(false);
           shade.setVisible(false);
         },
-        () => this.time.delayedCall(SLENDER_GAP, show),
+        () => this.freeSoots(),
       );
     };
 
     const show = () => {
+      this.quietSoots();
       burst(
         () => {
           body.setVisible(true);
@@ -309,7 +332,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
       );
     };
 
-    this.time.delayedCall(8000, show);
+    this.showSlender = show;
   }
 
   private makeStatic(): void {
@@ -366,7 +389,6 @@ export class PumpkinPatchScene extends Phaser.Scene {
         onComplete: () => {
           body.setVisible(false);
           thread.setVisible(false);
-          this.time.delayedCall(SPIDER_GAP, drop);
         },
       });
     };
@@ -395,7 +417,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
       });
     };
 
-    this.time.delayedCall(2000, drop);
+    this.dropSpider = drop;
   }
 
   private makeSpider(): void {
@@ -458,6 +480,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
 
   /** Up the path, stand, walk back off. */
   private visitSheets(): void {
+    this.quietSoots();
     this.sheets.forEach((_, i) => this.parkSheet(i));
     const { sx, sy } = this;
     SHEETS.forEach((spot, i) => {
@@ -497,7 +520,7 @@ export class PumpkinPatchScene extends Phaser.Scene {
         onComplete: () => {
           if (i !== SHEETS.length - 1) return;
           this.sheets.forEach((_, j) => this.parkSheet(j));
-          this.time.delayedCall(SHEET_GAP, () => this.visitSheets());
+          this.freeSoots();
         },
       });
       this.tweens.add({
@@ -528,7 +551,6 @@ export class PumpkinPatchScene extends Phaser.Scene {
         onComplete: () => {
           this.tweens.killTweensOf(sprite);
           sprite.setVisible(false);
-          if (i === 0) this.time.delayedCall(WITCH_GAP, () => this.flyWitches());
         },
       });
       this.tweens.add({
@@ -767,9 +789,47 @@ export class PumpkinPatchScene extends Phaser.Scene {
       this.soots.push(soot);
       this.time.delayedCall(i * 500, () => this.blinkSoot(soot));
     });
-    const nextSoot = () => this.creepSoot(this.soots[this.sootTurn++ % this.soots.length]);
-    nextSoot();
-    this.time.addEvent({ delay: SOOT_GAP, loop: true, callback: nextSoot });
+    this.nextSoot();
+    this.time.addEvent({ delay: SOOT_GAP, loop: true, callback: () => this.nextSoot() });
+  }
+
+  /** Sheets and Slender clear the grass. A turn that lands then waits until they leave. */
+  private quietSoots(): void {
+    this.sootHolds++;
+    for (const soot of this.soots) this.tuckSoot(soot);
+  }
+
+  private freeSoots(): void {
+    if (this.sootHolds === 0) return;
+    this.sootHolds--;
+    if (this.sootHolds === 0 && this.sootDue) this.nextSoot();
+  }
+
+  private nextSoot(): void {
+    if (this.sootHolds > 0) {
+      this.sootDue = true;
+      return;
+    }
+    this.sootDue = false;
+    this.creepSoot(this.soots[this.sootTurn++ % this.soots.length]);
+  }
+
+  /** Back under the prop, and the rest of this outing is cancelled. */
+  private tuckSoot(soot: Soot): void {
+    if (soot.mood === 'hide') return;
+    soot.mood = 'hide';
+    soot.wait?.remove(false);
+    soot.wait = undefined;
+    this.tweens.killTweensOf(soot.sprite);
+    const scale = this.sx * SOOT_SCALE;
+    soot.sprite.setTexture('soot').setScale(scale).setDepth(1 + soot.hide.y / SRC_H);
+    this.tweens.add({
+      targets: soot.sprite,
+      x: soot.hide.x * this.sx,
+      y: soot.hide.y * this.sy,
+      duration: 280,
+      ease: 'Quad.easeIn',
+    });
   }
 
   /** Eyes only while it is out. The peek blinks on its own. */
@@ -836,7 +896,11 @@ export class PumpkinPatchScene extends Phaser.Scene {
 
   private hideSoot(soot: Soot): void {
     soot.mood = 'hide';
-    this.time.delayedCall(Phaser.Math.Between(1500, 2500), () => this.peekSoot(soot));
+    if (this.sootHolds > 0) return;
+    this.time.delayedCall(Phaser.Math.Between(1500, 2500), () => {
+      if (this.sootHolds > 0 || soot.mood !== 'hide') return;
+      this.peekSoot(soot);
+    });
   }
 
   private peekSoot(soot: Soot): void {
@@ -849,10 +913,24 @@ export class PumpkinPatchScene extends Phaser.Scene {
       duration: Phaser.Math.Between(280, 420),
       ease: 'Sine.easeOut',
       onComplete: () => {
+        if (this.sootHolds > 0) {
+          this.tuckSoot(soot);
+          return;
+        }
         soot.sprite.setTexture('soot-shut');
         this.time.delayedCall(140, () => {
+          if (this.sootHolds > 0) {
+            this.tuckSoot(soot);
+            return;
+          }
           soot.sprite.setTexture('soot');
-          this.time.delayedCall(Phaser.Math.Between(700, 1100), () => this.yankSoot(soot));
+          this.time.delayedCall(Phaser.Math.Between(700, 1100), () => {
+            if (this.sootHolds > 0) {
+              this.tuckSoot(soot);
+              return;
+            }
+            this.yankSoot(soot);
+          });
         });
       },
     });
@@ -867,13 +945,17 @@ export class PumpkinPatchScene extends Phaser.Scene {
       duration: Phaser.Math.Between(140, 200),
       ease: 'Quad.easeIn',
       onComplete: () => {
-        if (soot.step === soot.points.length - 1) return;
-        this.time.delayedCall(Phaser.Math.Between(400, 800), () => this.creepSoot(soot));
+        if (soot.step === soot.points.length - 1 || this.sootHolds > 0) return;
+        this.time.delayedCall(Phaser.Math.Between(400, 800), () => {
+          if (this.sootHolds > 0) return;
+          this.creepSoot(soot);
+        });
       },
     });
   }
 
   private creepSoot(soot: Soot): void {
+    if (this.sootHolds > 0) return;
     soot.mood = 'creep';
     soot.step = (soot.step + 1) % soot.points.length;
     const next = soot.points[soot.step];
@@ -909,6 +991,10 @@ export class PumpkinPatchScene extends Phaser.Scene {
   }
 
   update(_t: number, delta: number): void {
+    const prev = this.storyMs;
+    this.storyMs = wrap(this.storyMs + delta * this.speed);
+    const hit = crossedBeat(prev, this.storyMs, BEAT_MS);
+    if (hit >= 0) this.playBeat(BEATS[hit].who);
     const vis = delta / 1000;
     const driftX = (5 * PLATE_W) / 480;
     const rise = (20 * PLATE_H) / 270;
