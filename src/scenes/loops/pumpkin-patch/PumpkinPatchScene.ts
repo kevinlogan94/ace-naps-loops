@@ -149,6 +149,8 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private sootTurn = 0;
   private witches: Phaser.GameObjects.Image[] = [];
   private sheets: Phaser.GameObjects.Graphics[] = [];
+  private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
+  private snout = { x: 0, y: 0 };
 
   constructor() {
     super('PumpkinPatch');
@@ -194,6 +196,26 @@ export class PumpkinPatchScene extends Phaser.Scene {
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
+
+    // Same rise as the fall yard: three z's leave the snout and fade out.
+    this.snout = {
+      x: ace.x + (0.38 - 0.5) * ace.width * ACE_SCALE,
+      y: ace.y + (0 - 0.78) * ace.height * ACE_SCALE,
+    };
+    const zFont = Math.round((12 * PLATE_H) / 270);
+    for (let i = 0; i < 3; i++) {
+      const g = this.add
+        .text(0, 0, 'z', {
+          fontFamily: 'monospace',
+          fontSize: `${zFont}px`,
+          color: '#f4e8c8',
+          stroke: '#3a2a18',
+          strokeThickness: Math.max(1, Math.round((2 * PLATE_H) / 270)),
+        })
+        .setOrigin(0.5)
+        .setDepth(5);
+      this.zzz.push({ g, t: i / 3 });
+    }
 
     this.makeSmokePuff();
     const puff = () => this.emitSmoke(CHIMNEY.x * sx, CHIMNEY.y * sy, sx);
@@ -798,6 +820,15 @@ export class PumpkinPatchScene extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     const vis = delta / 1000;
+    const driftX = (5 * PLATE_W) / 480;
+    const rise = (20 * PLATE_H) / 270;
+    for (const z of this.zzz) {
+      z.t = (z.t + vis * 0.16) % 1;
+      const t = z.t;
+      z.g.setPosition(this.snout.x + Math.sin(t * Math.PI * 2) * driftX, this.snout.y - t * rise);
+      z.g.setAlpha(t < 0.1 ? t / 0.1 : 0.95 * (1 - (t - 0.1) / 0.9));
+      z.g.setScale(0.85 + t * 0.45);
+    }
     for (let i = 0; i < this.leaves.length; i++) {
       const { sprite: leaf, tree } = this.leaves[i];
       const crown = TREES[tree];
