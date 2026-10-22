@@ -9,8 +9,8 @@ YouTube descriptions should repeat this attribution.
 | Asset | Notes |
 | --- | --- |
 | `src/scenes/loops/fall-yard/fall-yard.jpg` | Generated autumn yard plate. |
-| `src/scenes/loops/pumpkin-patch/pumpkin-patch.jpg` | Generated pumpkin patch plate. |
-| `src/scenes/loops/pumpkin-patch/ace.png` | Ace napping, placed on the wheelbarrow. |
+| `src/scenes/loops/pumpkin-patch/images/pumpkin-patch.jpg` | Generated pumpkin patch plate. |
+| `src/scenes/loops/pumpkin-patch/images/ace.png` | Ace napping, placed on the wheelbarrow. |
 
 ## Custom
 

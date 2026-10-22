@@ -2,11 +2,11 @@ import Phaser from 'phaser';
 import { PLATE_H, PLATE_W } from '../../../plate';
 import { crossedBeat, formatTime, wrap } from '../../../systems/storyClock';
 import leavesUrl from '../fall-yard/leaves.png';
-import aceUrl from './ace.png';
-import patchUrl from './pumpkin-patch.jpg';
+import aceUrl from './images/ace.png';
+import patchUrl from './images/pumpkin-patch.jpg';
 import { mountPumpkinPatchEditor } from './pumpkinPatchEditor';
-import slenderUrl from './slender.png';
-import witchUrl from './witch-silhouette.png';
+import slenderUrl from './images/slender.png';
+import witchUrl from './images/witch-silhouette.png';
 
 /** Source plate is 1024×571. Positions below are in those pixels. */
 const SRC_W = 1024;
