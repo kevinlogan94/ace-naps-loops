@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { PLATE_H, PLATE_W } from '../../../plate';
-import { crossedBeat, wrap } from '../../../systems/storyClock';
+import { crossedBeat, formatTime, wrap } from '../../../systems/storyClock';
 import leavesUrl from '../fall-yard/leaves.png';
 import aceUrl from './ace.png';
 import patchUrl from './pumpkin-patch.jpg';
+import { mountPumpkinPatchEditor } from './pumpkinPatchEditor';
 import slenderUrl from './slender.png';
 import witchUrl from './witch-silhouette.png';
 
@@ -36,8 +37,8 @@ const SOOT_SRC_H = 14 * SOOT_SCALE * (PLATE_W / SRC_W) / (PLATE_H / SRC_H);
 const PEEK = 6;
 /** Cottage leaves pass the path soot at about 64. Right-tree leaves pass the right soot at about 82. */
 const LEAF_SCARE = 88;
-/** One soot's full grass pass, then the next. Four soots means each waits 12 minutes. */
-const SOOT_GAP = 3 * 60 * 1000;
+/** One soot's full grass pass, then the next. Four soots means each waits 8 minutes. */
+const SOOT_GAP = 2 * 60 * 1000;
 /** Off the right edge, high in the sky. They face left, so they cross right to left. */
 const WITCH = { x0: SRC_W + 40, x1: -48, y: 32, scale: 0.08 };
 const WITCH_MS = 22_000;
@@ -170,6 +171,9 @@ export class PumpkinPatchScene extends Phaser.Scene {
   private snout = { x: 0, y: 0 };
   private storyMs = 0;
   private speed = 1;
+  private skipBeat = false;
+  private clock!: Phaser.GameObjects.Text;
+  private editor?: { tick: (ms: number) => void; destroy: () => void };
   private dropSpider: () => void = () => {};
   private showSlender: () => void = () => {};
 
@@ -262,6 +266,24 @@ export class PumpkinPatchScene extends Phaser.Scene {
     this.sheets = [this.makeSheet(), this.makeSheet()];
     this.hangSpider(sx, sy);
     this.hauntSlender(sx, sy);
+
+    this.clock = this.add
+      .text(8, 8, '', { fontFamily: 'monospace', fontSize: `${Math.round((8 * PLATE_H) / 270)}px`, color: '#f4e8c8' })
+      .setDepth(100)
+      .setScrollFactor(0)
+      .setVisible(false);
+
+    this.editor = mountPumpkinPatchEditor({
+      beats: BEATS,
+      setMs: (ms) => {
+        this.skipBeat = true;
+        this.storyMs = wrap(ms);
+      },
+      play: (who) => this.playBeat(who),
+      soot: () => this.nextSoot(),
+      setHud: (on) => this.clock.setVisible(on),
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.editor?.destroy());
   }
 
   /** The clock calls this once, when a slot starts. */
@@ -993,8 +1015,11 @@ export class PumpkinPatchScene extends Phaser.Scene {
   update(_t: number, delta: number): void {
     const prev = this.storyMs;
     this.storyMs = wrap(this.storyMs + delta * this.speed);
-    const hit = crossedBeat(prev, this.storyMs, BEAT_MS);
-    if (hit >= 0) this.playBeat(BEATS[hit].who);
+    if (this.skipBeat) this.skipBeat = false;
+    else {
+      const hit = crossedBeat(prev, this.storyMs, BEAT_MS);
+      if (hit >= 0) this.playBeat(BEATS[hit].who);
+    }
     const vis = delta / 1000;
     const driftX = (5 * PLATE_W) / 480;
     const rise = (20 * PLATE_H) / 270;
@@ -1019,6 +1044,8 @@ export class PumpkinPatchScene extends Phaser.Scene {
       }
       if (srcY >= crown.stopY || leaf.x > PLATE_W + 40) this.dropLeaf(i, false);
     }
+    this.clock.setText(`pumpkin-patch ${formatTime(this.storyMs)} x${this.speed}`);
+    this.editor?.tick(this.storyMs);
   }
 
   /** A nearby falling leaf sends an open soot into its hide. */
