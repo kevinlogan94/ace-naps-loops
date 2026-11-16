@@ -1,12 +1,24 @@
 import Phaser from 'phaser';
 import { PLATE_H, PLATE_W } from '../../../plate';
 import { crossedBeat, formatTime, wrap } from '../../../systems/storyClock';
-import { type ChristmasWho, mountChristmas2026Editor } from './christmas2026Editor';
 import aceUrl from '../pumpkin-patch/images/ace.png';
+import { type ChristmasWho, mountChristmas2026Editor } from './christmas2026Editor';
+import bedUrl from './images/bed.png';
+import foregroundUrl from './images/cabin-foreground.png';
 import interiorUrl from './images/cabin-interior.png';
+import elf0Url from './images/elf-0.png';
+import elf1Url from './images/elf-1.png';
+import elf2Url from './images/elf-2.png';
+import elf3Url from './images/elf-3.png';
+import fireUrl from './images/fire.png';
+import grinchUrl from './images/grinch.png';
 import outsideUrl from './images/outside.jpg';
 import rudolphUrl from './images/rudolph.png';
-import sleighUrl from './images/sleigh-silhouette.png';
+import sleigh1Url from './images/sleigh-1.png';
+import sleigh2Url from './images/sleigh-2.png';
+import trainDownUrl from './images/train-down.png';
+import trainUpUrl from './images/train-up.png';
+import trainUrl from './images/train.png';
 
 /** Source plate is 1376×768. Positions below are in those pixels. */
 const SRC_W = 1376;
@@ -18,19 +30,6 @@ const ACE_SCALE = 1.32;
 /** Outdoor window bounds (clipped automatically by cabin-interior.png at depth 1.8). */
 const OUTSIDE = { x0: 378, x1: 996, y0: 64, y1: 442, wind: 3 };
 const SNOW_COUNT = 36;
-
-/** Fireplace flame bases along the diagonal log grate. */
-const FIRES = [
-  { x: 1212, y: 518, s: 2.8 },
-  { x: 1228, y: 524, s: 3.9 },
-  { x: 1244, y: 530, s: 4.7 },
-  { x: 1262, y: 536, s: 5.3 },
-  { x: 1276, y: 542, s: 4.4 },
-  { x: 1288, y: 548, s: 3.5 },
-  { x: 1220, y: 526, s: 2.5 },
-  { x: 1252, y: 538, s: 3.2 },
-  { x: 1280, y: 550, s: 2.7 },
-] as const;
 
 /** Tree star and garland light positions in source pixels. */
 const TREE_STAR = { x: 168, y: 36 };
@@ -55,77 +54,92 @@ const TREE_LIGHTS: [number, number][] = [
   [244, 496],
 ];
 
-/** Santa's sleigh glides behind the bay window frames and across the full moon. */
-const SLEIGH = { x0: 280, x1: 1088, y0: 156, y1: 142, scale: 0.52 };
-const SLEIGH_MS = 18_000;
+/** Distant sleigh silhouette with 2-frame galloping reindeer crossing the moon. */
+const SLEIGH = { x0: 330, x1: 1040, y0: 162, y1: 138, scale: 0.24 };
+const SLEIGH_MS = 16_000;
 
-/** Rudolph peeks over the right side of the center windowsill. */
-const RUDOLPH = { x: 756, hideY: 572, showY: 430, scale: 0.58 };
-const RUDOLPH_HOLD = 6500;
+/** Full-body Rudolph walks up to the window from the right treeline, pauses, and walks back. */
+const RUDOLPH = { x0: 1060, x1: 758, y: 488, scale: 0.72 };
+const RUDOLPH_WALK = 2600;
+const RUDOLPH_HOLD = 4500;
 
-/** The Grinch sneaks up at the left side of the center windowsill to eye the tree & gifts. */
-const GRINCH = { x0: 584, x1: 616, hideY: 506, showY: 432, scale: 2.35 };
-const GRINCH_HOLD = 6200;
+/** Full-body Grinch tiptoes up outside the left/center window, peers at the gifts, and sneaks off. */
+const GRINCH = { x0: 310, x1: 604, y: 482, scale: 0.72 };
+const GRINCH_WALK = 2400;
+const GRINCH_HOLD = 4200;
 
-/** Miniature toy steam train chugs across the open foreground floorboards. */
-const TRAIN = { x0: -90, x1: SRC_W + 90, y: 748, scale: 2.4 };
-const TRAIN_MS = 15_000;
+/** Miniature toy steam train enters from the left, loops around Ace's bed, and exits left. */
+const TRAIN = {
+  xStart: -80,
+  xLeft: 475,
+  xRight: 918,
+  yFront: 742,
+  yBack: 612,
+  scale: 0.48,
+};
 
-/** Four elves take turns every 2 minutes, matching the soot rhythm in pumpkin-patch. */
-const ELF_SCALE = 1.65;
-const ELF_TEX_H = 30;
+/** Four 16-bit elves hide behind the cabin-foreground.png gift/log layer (depth 3.5). */
+const ELF_SCALE = 0.44;
+const ELF_TEX_H = 148;
 const ELF_SRC_H = ELF_TEX_H * ELF_SCALE * (PLATE_W / SRC_W) / (PLATE_H / SRC_H);
-/** Clears the pointed hat and blinking eyes above the prop rim while keeping the tunic hidden. */
-const PEEK = 33;
+const PEEK = 36;
 const SPARK_SCARE = 95;
 const ELF_GAP = 2 * 60 * 1000;
 
-const ELVES_POINTS: { x: number; y: number }[][] = [
-  // Elf 0 (green hat): steps out from the side of the green gift onto the red tree rug.
-  [
-    { x: 292, y: 684 },
-    { x: 234, y: 712 },
-    { x: 346, y: 718 },
-  ],
-  // Elf 1 (red hat): steps out from the right of the gold gift toward Ace's bed.
-  [
-    { x: 412, y: 654 },
-    { x: 454, y: 696 },
-    { x: 392, y: 724 },
-  ],
-  // Elf 2 (striped hat): floorboards just behind/left of Ace's bed.
-  [
-    { x: 462, y: 616 },
-    { x: 486, y: 646 },
-    { x: 448, y: 660 },
-  ],
-  // Elf 3 (gold-bell hat): creeps from the log pile toward the milk & cookies plate.
-  [
-    { x: 1126, y: 662 },
-    { x: 1048, y: 696 },
-    { x: 1106, y: 732 },
-  ],
-];
-
-/** Rectangular foreground prop crops that the 4 elves hide behind and peek over. */
-const COVERS: {
-  crop: { x: number; y: number; w: number; h: number };
+const ELVES_CFG: {
+  key: string;
   hide: { x: number; y: number };
+  rim: number;
+  points: { x: number; y: number }[];
 }[] = [
-  // Green wrapped gift box under the tree.
-  { crop: { x: 172, y: 590, w: 102, h: 84 }, hide: { x: 222, y: 656 } },
-  // Tall gold wrapped gift box.
-  { crop: { x: 272, y: 552, w: 112, h: 114 }, hide: { x: 330, y: 626 } },
-  // Red wrapped gift box to the right of the gold box.
-  { crop: { x: 376, y: 536, w: 70, h: 92 }, hide: { x: 412, y: 606 } },
-  // Stack of firewood logs in the bottom-right foreground.
-  { crop: { x: 1218, y: 622, w: 158, h: 146 }, hide: { x: 1296, y: 704 } },
+  // Elf 0 (green hat): hides behind the green gift box, steps onto the front tree rug.
+  {
+    key: 'elf-0',
+    hide: { x: 222, y: 664 },
+    rim: 586,
+    points: [
+      { x: 164, y: 702 },
+      { x: 246, y: 718 },
+      { x: 326, y: 708 },
+    ],
+  },
+  // Elf 1 (red hat): hides behind the tall gold gift box, steps out toward Ace's bed.
+  {
+    key: 'elf-1',
+    hide: { x: 326, y: 648 },
+    rim: 546,
+    points: [
+      { x: 408, y: 676 },
+      { x: 454, y: 708 },
+      { x: 386, y: 724 },
+    ],
+  },
+  // Elf 2 (striped hat): hides behind the left red gift box, steps out onto the left rug.
+  {
+    key: 'elf-2',
+    hide: { x: 64, y: 652 },
+    rim: 560,
+    points: [
+      { x: 152, y: 696 },
+      { x: 204, y: 722 },
+      { x: 136, y: 726 },
+    ],
+  },
+  // Elf 3 (gold-trimmed hat): hides behind the firewood logs, creeps toward the milk & cookies.
+  {
+    key: 'elf-3',
+    hide: { x: 1306, y: 710 },
+    rim: 618,
+    points: [
+      { x: 1148, y: 678 },
+      { x: 1068, y: 706 },
+      { x: 1132, y: 734 },
+    ],
+  },
 ];
 
 type Elf = {
   sprite: Phaser.GameObjects.Image;
-  openKey: string;
-  shutKey: string;
   points: { x: number; y: number }[];
   hide: { x: number; y: number };
   rim: number;
@@ -174,9 +188,21 @@ export class Christmas2026Scene extends Phaser.Scene {
   preload(): void {
     this.load.image('outside', outsideUrl);
     this.load.image('cabin-interior', interiorUrl);
+    this.load.image('cabin-foreground', foregroundUrl);
+    this.load.image('ace-bed', bedUrl);
     this.load.image('ace-christmas', aceUrl);
-    this.load.image('xmas-sleigh', sleighUrl);
+    this.load.image('xmas-fire', fireUrl);
+    this.load.image('xmas-sleigh-1', sleigh1Url);
+    this.load.image('xmas-sleigh-2', sleigh2Url);
     this.load.image('xmas-rudolph', rudolphUrl);
+    this.load.image('xmas-grinch', grinchUrl);
+    this.load.image('xmas-train', trainUrl);
+    this.load.image('xmas-train-up', trainUpUrl);
+    this.load.image('xmas-train-down', trainDownUrl);
+    this.load.image('elf-0', elf0Url);
+    this.load.image('elf-1', elf1Url);
+    this.load.image('elf-2', elf2Url);
+    this.load.image('elf-3', elf3Url);
   }
 
   create(): void {
@@ -185,27 +211,51 @@ export class Christmas2026Scene extends Phaser.Scene {
     this.sy = PLATE_H / SRC_H;
     const { sx, sy } = this;
 
-    for (const key of ['outside', 'cabin-interior', 'ace-christmas', 'xmas-sleigh', 'xmas-rudolph']) {
+    for (const key of [
+      'outside',
+      'cabin-interior',
+      'cabin-foreground',
+      'ace-bed',
+      'ace-christmas',
+      'xmas-fire',
+      'xmas-sleigh-1',
+      'xmas-sleigh-2',
+      'xmas-rudolph',
+      'xmas-grinch',
+      'xmas-train',
+      'xmas-train-up',
+      'xmas-train-down',
+      'elf-0',
+      'elf-1',
+      'elf-2',
+      'elf-3',
+    ]) {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
 
     // Layer 1 (depth 0): Pure outdoor Winter Wonderland backdrop.
     this.add.image(0, 0, 'outside').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(0);
 
-    // Layer 2 (depth 1.8): Cabin interior with transparent window panes (masks everything between depth 0 and 1.8).
+    // Layer 2 (depth 1.8): Cabin interior with transparent window panes.
     this.add.image(0, 0, 'cabin-interior').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(1.8);
+
+    // Layer 3 (depth 3.5): Foreground presents, firewood logs, and right fireplace pillar.
+    this.add.image(0, 0, 'cabin-foreground').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(3.5);
+
+    // Layer 4 (depth 3.6): Dedicated layer for Ace's dog bed.
+    this.add.image(0, 0, 'ace-bed').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(3.6);
 
     this.makeTextures();
     this.spawnSnow();
     this.lightTree(sx, sy);
     this.lightHearth(sx, sy);
 
-    // Ace curled up in the plush plaid bed.
+    // Ace curled up on top of the dedicated bed.png layer (depth 3.7).
     const ace = this.add
       .image(BED.x * sx, BED.y * sy, 'ace-christmas')
       .setOrigin(0.5, 0.78)
       .setScale(ACE_SCALE)
-      .setDepth(2.5);
+      .setDepth(3.7);
 
     this.tweens.add({
       targets: ace,
@@ -267,7 +317,6 @@ export class Christmas2026Scene extends Phaser.Scene {
     else this.runTrain();
   }
 
-  /** Procedural pixel-art textures with nearest-neighbor filtering. */
   private makeTextures(): void {
     const g = this.add.graphics();
     const drawGrid = (key: string, rows: string[], palette: Record<string, number>, cell = 2) => {
@@ -276,10 +325,8 @@ export class Christmas2026Scene extends Phaser.Scene {
       rows.forEach((row, y) => {
         for (let x = 0; x < row.length; x++) {
           const ch = row[x];
-          if (ch === ' ' || ch === '.') continue;
-          const color = palette[ch];
-          if (color === undefined) continue;
-          g.fillStyle(color, 1);
+          if (ch === '.') continue;
+          g.fillStyle(palette[ch], 1);
           g.fillRect(x * cell, y * cell, cell, cell);
         }
       });
@@ -287,105 +334,8 @@ export class Christmas2026Scene extends Phaser.Scene {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
     };
 
-    // Crisp pixel snowflake and steam puff.
     drawGrid('xmas-flake', ['.w.', 'www', '.w.'], { w: 0xf4f8ff }, 2);
-    drawGrid(
-      'xmas-steam',
-      ['..ww..', '.wwww.', 'wwwwww', '.wwww.', '..ww..'],
-      { w: 0xf4f0e8 },
-      2,
-    );
-
-    // Hearth flame.
-    drawGrid(
-      'xmas-flame',
-      ['..y..', '.yyy.', '.yoy.', 'yoooy', 'yoooy', 'rooor', 'rooor', '.rrr.'],
-      { y: 0xffe664, o: 0xff8420, r: 0xe03c14 },
-      2,
-    );
-
-    // Four distinct elves (open eyes and shut eyes for blinking).
-    const elfVariants = [
-      { hat: 0x247a38, s: 0x247a38, trim: 0xf6f0e4, suit: 0xc83228 },
-      { hat: 0xc83228, s: 0xc83228, trim: 0xf6f0e4, suit: 0x247a38 },
-      { hat: 0xc83228, s: 0xf6f0e4, trim: 0xf6f0e4, suit: 0x2f5a8c },
-      { hat: 0x247a38, s: 0x247a38, trim: 0xf6d048, suit: 0x8a3822 },
-    ];
-    const elfOpen = [
-      '....tt....',
-      '...hhhh...',
-      '..hhhhhh..',
-      '..ssssss..',
-      '.hhhhhhhh.',
-      '.tttttttt.',
-      '.kffffffk.',
-      'kfwwffwwfk',
-      'kfbwffwbfk',
-      '.kpffffpk.',
-      '..ffffff..',
-      '..tttttt..',
-      '.cccccccc.',
-      '.ccctcccc.',
-      '..cccccc..',
-    ];
-    const elfShut = elfOpen.map((r, y) => (y === 7 ? 'kffffffffk' : y === 8 ? 'kfbbffbbfk' : r));
-    elfVariants.forEach((v, i) => {
-      const pal = { h: v.hat, s: v.s, t: v.trim, c: v.suit, f: 0xf4c49c, k: 0xf4c49c, p: 0xe89088, w: 0xffffff, b: 0x201814 };
-      drawGrid(`elf-${i}`, elfOpen, pal, 2);
-      drawGrid(`elf-${i}-shut`, elfShut, pal, 2);
-    });
-
-    // Single still frame for the Grinch in a Santa hat.
-    drawGrid(
-      'xmas-grinch',
-      [
-        '....rrrrr...',
-        '...rrrrrrr..',
-        '..rrrrrrrrt.',
-        '.ttttttttttt',
-        '..gggggggg..',
-        '.ggkggggkgg.',
-        '.gkkyggykkg.',
-        '.gggggggggg.',
-        '.ggggkkgggg.',
-        '..gkggggkg..',
-        '..ggkkkkgg..',
-        '...gggggg...',
-        '..rrrrrrrr..',
-        '..tttttttt..',
-      ],
-      { r: 0xc82828, t: 0xf4eee4, g: 0x58a832, k: 0x1c2814, y: 0xffe438 },
-      2,
-    );
-
-    // Miniature red-and-gold toy steam locomotive.
-    drawGrid(
-      'xmas-train',
-      [
-        '..............kk....',
-        '....gggggg....kk....',
-        '....grrrrg...kkkk...',
-        '....grwwrg....kk....',
-        '....grwwrg..dddddd..',
-        '...ggggggggddddddddl',
-        '..rrrrrrrrrrrrrrrrgl',
-        '..rrrrrrrrrrrrrrrrg.',
-        '..ggggggggggggggggrr',
-        '...ww..ww..ww..ww.rr',
-        '..wggwwggwwggwwggw..',
-        '...ww..ww..ww..ww...',
-      ],
-      {
-        r: 0xc82824,
-        g: 0xf0c244,
-        d: 0x282c34,
-        k: 0x1c1e24,
-        w: 0xf8f0dc,
-        l: 0xfff280,
-      },
-      2,
-    );
-
+    drawGrid('xmas-steam', ['..ww..', '.wwww.', 'wwwwww', '.wwww.', '..ww..'], { w: 0xf4f0e8 }, 2);
     g.destroy();
   }
 
@@ -449,8 +399,9 @@ export class Christmas2026Scene extends Phaser.Scene {
     });
   }
 
+  /** Animated fireplace using layered pixel-art flame sprites (fire.png) extracted from the scene palette. */
   private lightHearth(sx: number, sy: number): void {
-    // Cover the static painted flame tips with clean firebox bricks so the animated flames own the motion.
+    // Cover the static painted flame tips with clean firebox bricks so the animated fire.png layers own the motion.
     const brick = { x: 1158, y: 396, w: 46, h: 86 };
     for (const [dx, dy] of [
       [1204, 396],
@@ -466,14 +417,6 @@ export class Christmas2026Scene extends Phaser.Scene {
         .setCrop(brick.x, brick.y, brick.w, brick.h);
     }
 
-    // Keep the right stone fireplace pillar in front of the outer flames.
-    this.add
-      .image(0, 0, 'cabin-interior')
-      .setOrigin(0, 0)
-      .setDisplaySize(PLATE_W, PLATE_H)
-      .setDepth(2.2)
-      .setCrop(1295, 380, 81, 210);
-
     const glow = this.add
       .ellipse(1190 * sx, 595 * sy, 260 * sx, 140 * sy, 0xff9838, 0.1)
       .setDepth(1.9);
@@ -488,27 +431,32 @@ export class Christmas2026Scene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
-    FIRES.forEach((fire, i) => {
-      const scale = sx * fire.s;
-      const flame = this.add
-        .image(fire.x * sx, fire.y * sy, 'xmas-flame')
+    const fireLayers = [
+      { x: 1249, y: 536, sx0: 1.04, sy0: 0.92, sy1: 1.16, flip: false, angle: 3, dur: 240, tints: [0xff9838, 0xffb848] },
+      { x: 1246, y: 538, sx0: 0.96, sy0: 0.86, sy1: 1.18, flip: true, angle: -4, dur: 190, tints: [0xffd870, 0xffa038] },
+      { x: 1251, y: 536, sx0: 0.88, sy0: 0.82, sy1: 1.08, flip: false, angle: 2, dur: 150, tints: [0xffffff, 0xfff0b0] },
+    ];
+    fireLayers.forEach((cfg, i) => {
+      const f = this.add
+        .image(cfg.x * sx, cfg.y * sy, 'xmas-fire')
         .setOrigin(0.5, 1)
-        .setDepth(2)
-        .setScale(scale);
+        .setFlipX(cfg.flip)
+        .setScale(sx * cfg.sx0, sy * cfg.sy0)
+        .setDepth(2 + i * 0.05);
       this.tweens.add({
-        targets: flame,
-        scaleX: scale * (i % 2 === 0 ? 0.84 : 1.14),
-        scaleY: scale * 1.38,
-        angle: (i % 2 === 0 ? -1 : 1) * 4,
-        duration: 150 + (i % 4) * 55,
+        targets: f,
+        scaleX: sx * cfg.sx0 * 0.92,
+        scaleY: sy * cfg.sy1,
+        angle: cfg.angle,
+        duration: cfg.dur,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
       });
       this.time.addEvent({
-        delay: 120 + (i % 4) * 35,
+        delay: 140 + i * 45,
         loop: true,
-        callback: () => flame.setTint(Phaser.Math.RND.pick([0xffffff, 0xfff0b0, 0xffb060, 0xff7a28])),
+        callback: () => f.setTint(Phaser.Math.RND.pick(cfg.tints)),
       });
     });
 
@@ -516,17 +464,16 @@ export class Christmas2026Scene extends Phaser.Scene {
       delay: 650,
       loop: true,
       callback: () => {
-        const base = FIRES[Phaser.Math.Between(0, FIRES.length - 1)];
         const ember = this.add
           .rectangle(
-            (base.x + Phaser.Math.Between(-10, 10)) * sx,
-            (base.y - 12) * sy,
+            Phaser.Math.Between(1215, 1285) * sx,
+            515 * sy,
             3 * sx,
             3 * sy,
             0xffd460,
             0.9,
           )
-          .setDepth(2.1);
+          .setDepth(2.15);
         this.tweens.add({
           targets: ember,
           x: ember.x + Phaser.Math.Between(-14, 14) * sx,
@@ -581,43 +528,22 @@ export class Christmas2026Scene extends Phaser.Scene {
 
   private spawnElves(sx: number, sy: number): void {
     this.elves = [];
-    COVERS.forEach((cover) => {
-      // ponytail: a hide outside its crop stands on top of the prop. Upgrade path is a drawn mask.
-      const top = cover.hide.y - ELF_SRC_H;
-      if (top < cover.crop.y || cover.hide.y > cover.crop.y + cover.crop.h) {
-        throw new Error('elf hide is outside its cover');
-      }
-      const { x, y, w, h } = cover.crop;
-      this.add
-        .image(0, 0, 'cabin-interior')
-        .setOrigin(0, 0)
-        .setDisplaySize(PLATE_W, PLATE_H)
-        .setDepth(3.5)
-        .setCrop(x, y, w, h);
-    });
-
     const scale = sx * ELF_SCALE;
-    ELVES_POINTS.forEach((points, i) => {
-      const cover = COVERS[i];
-      const openKey = `elf-${i}`;
-      const shutKey = `elf-${i}-shut`;
+    ELVES_CFG.forEach((cfg) => {
       const sprite = this.add
-        .image(cover.hide.x * sx, cover.hide.y * sy, openKey)
+        .image(cfg.hide.x * sx, cfg.hide.y * sy, cfg.key)
         .setOrigin(0.5, 1)
-        .setDepth(2 + cover.hide.y / SRC_H)
+        .setDepth(3.0)
         .setScale(scale);
       const elf: Elf = {
         sprite,
-        openKey,
-        shutKey,
-        points,
-        hide: cover.hide,
-        rim: cover.crop.y,
-        step: points.length - 1,
+        points: cfg.points,
+        hide: cfg.hide,
+        rim: cfg.rim,
+        step: cfg.points.length - 1,
         mood: 'hide',
       };
       this.elves.push(elf);
-      this.time.delayedCall(i * 500, () => this.blinkElf(elf));
     });
     this.nextElf();
     this.time.addEvent({ delay: ELF_GAP, loop: true, callback: () => this.nextElf() });
@@ -650,7 +576,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     elf.wait = undefined;
     this.tweens.killTweensOf(elf.sprite);
     const scale = this.sx * ELF_SCALE;
-    elf.sprite.setTexture(elf.openKey).setScale(scale).setDepth(2 + elf.hide.y / SRC_H);
+    elf.sprite.setScale(scale).setAngle(0);
     this.tweens.add({
       targets: elf.sprite,
       x: elf.hide.x * this.sx,
@@ -660,26 +586,11 @@ export class Christmas2026Scene extends Phaser.Scene {
     });
   }
 
-  private blinkElf(elf: Elf): void {
-    this.time.delayedCall(Phaser.Math.Between(1800, 4200), () => {
-      if (elf.mood !== 'open') {
-        this.blinkElf(elf);
-        return;
-      }
-      elf.sprite.setTexture(elf.shutKey);
-      this.time.delayedCall(140, () => {
-        if (elf.mood === 'open') elf.sprite.setTexture(elf.openKey);
-        this.blinkElf(elf);
-      });
-    });
-  }
-
   private waitElf(elf: Elf): void {
     elf.mood = 'open';
-    elf.sprite.setTexture(elf.openKey);
     this.tweens.add({
       targets: elf.sprite,
-      x: elf.sprite.x + this.sx,
+      x: elf.sprite.x + this.sx * 1.2,
       duration: 110,
       yoyo: true,
       repeat: -1,
@@ -698,7 +609,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     elf.wait = undefined;
     this.tweens.killTweensOf(elf.sprite);
     const scale = this.sx * ELF_SCALE;
-    elf.sprite.setTexture(elf.openKey).setScale(scale).setDepth(2 + elf.hide.y / SRC_H);
+    elf.sprite.setScale(scale);
     this.tweens.add({
       targets: elf.sprite,
       x: elf.hide.x * this.sx,
@@ -739,20 +650,12 @@ export class Christmas2026Scene extends Phaser.Scene {
           this.tuckElf(elf);
           return;
         }
-        elf.sprite.setTexture(elf.shutKey);
-        this.time.delayedCall(150, () => {
+        this.time.delayedCall(Phaser.Math.Between(850, 1250), () => {
           if (this.elfHolds > 0) {
             this.tuckElf(elf);
             return;
           }
-          elf.sprite.setTexture(elf.openKey);
-          this.time.delayedCall(Phaser.Math.Between(750, 1150), () => {
-            if (this.elfHolds > 0) {
-              this.tuckElf(elf);
-              return;
-            }
-            this.yankElf(elf);
-          });
+          this.yankElf(elf);
         });
       },
     });
@@ -782,7 +685,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     elf.step = (elf.step + 1) % elf.points.length;
     const next = elf.points[elf.step];
     const scale = this.sx * ELF_SCALE;
-    elf.sprite.setScale(scale).setDepth(2 + next.y / SRC_H);
+    elf.sprite.setScale(scale);
     this.tweens.add({
       targets: elf.sprite,
       x: next.x * this.sx,
@@ -793,22 +696,38 @@ export class Christmas2026Scene extends Phaser.Scene {
     });
   }
 
-  /** Beat 1: Santa's sleigh glides behind the bay window frames and across the moon. */
+  /** Beat 1: Distant Santa sleigh with 2-frame galloping reindeer crossing the moon. */
   private setupSleigh(sx: number, sy: number): void {
     const sprite = this.add
-      .image(SLEIGH.x0 * sx, SLEIGH.y0 * sy, 'xmas-sleigh')
+      .image(SLEIGH.x0 * sx, SLEIGH.y0 * sy, 'xmas-sleigh-1')
       .setOrigin(0.5)
       .setScale(sx * SLEIGH.scale)
       .setDepth(1.2)
       .setVisible(false);
 
+    let gallopTimer: Phaser.Time.TimerEvent | undefined;
+    let stride = false;
+
     this.runSleigh = () => {
       this.tweens.killTweensOf(sprite);
+      gallopTimer?.remove(false);
+      stride = false;
+
       sprite
         .setVisible(true)
+        .setTexture('xmas-sleigh-1')
         .setAlpha(0.92)
         .setPosition(SLEIGH.x0 * sx, SLEIGH.y0 * sy)
         .setAngle(-2);
+
+      gallopTimer = this.time.addEvent({
+        delay: 190,
+        loop: true,
+        callback: () => {
+          stride = !stride;
+          sprite.setTexture(stride ? 'xmas-sleigh-2' : 'xmas-sleigh-1');
+        },
+      });
 
       this.tweens.add({
         targets: sprite,
@@ -817,6 +736,8 @@ export class Christmas2026Scene extends Phaser.Scene {
         duration: SLEIGH_MS,
         ease: 'Linear',
         onComplete: () => {
+          gallopTimer?.remove(false);
+          gallopTimer = undefined;
           this.tweens.killTweensOf(sprite);
           sprite.setVisible(false);
         },
@@ -824,7 +745,7 @@ export class Christmas2026Scene extends Phaser.Scene {
       this.tweens.add({
         targets: sprite,
         angle: 2,
-        duration: 1100,
+        duration: 900,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -832,36 +753,51 @@ export class Christmas2026Scene extends Phaser.Scene {
     };
   }
 
-  /** Beat 2: Rudolph rises at the center windowsill with a glowing red nose. */
+  /** Beat 2: Full-body Rudolph walks in from the right treeline up to the center window. */
   private setupRudolph(sx: number, sy: number): void {
     const body = this.add
-      .image(RUDOLPH.x * sx, RUDOLPH.hideY * sy, 'xmas-rudolph')
+      .image(RUDOLPH.x0 * sx, RUDOLPH.y * sy, 'xmas-rudolph')
       .setOrigin(0.5, 1)
       .setScale(sx * RUDOLPH.scale)
       .setDepth(1.5)
       .setVisible(false);
 
     const noseGlow = this.add
-      .ellipse((RUDOLPH.x - 29) * sx, (RUDOLPH.showY - 34) * sy, 22 * sx, 22 * sy, 0xff2a2a, 0)
+      .ellipse((RUDOLPH.x1 - 45) * sx, (RUDOLPH.y - 102) * sy, 20 * sx, 20 * sy, 0xff2a2a, 0)
       .setDepth(1.6)
       .setVisible(false);
 
     this.runRudolph = () => {
       this.tweens.killTweensOf(body);
       this.tweens.killTweensOf(noseGlow);
+      noseGlow.setVisible(false).setAlpha(0);
+
       body
         .setVisible(true)
-        .setTexture('xmas-rudolph')
-        .setPosition(RUDOLPH.x * sx, RUDOLPH.hideY * sy);
-      noseGlow.setVisible(false).setAlpha(0);
+        .setFlipX(false)
+        .setAngle(-1.5)
+        .setPosition(RUDOLPH.x0 * sx, RUDOLPH.y * sy);
+
+      // Walking bob while trotting up to the window.
+      const stepBob = this.tweens.add({
+        targets: body,
+        y: (RUDOLPH.y - 5) * sy,
+        angle: 1.5,
+        duration: 240,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
 
       this.tweens.add({
         targets: body,
-        y: RUDOLPH.showY * sy,
-        duration: 950,
+        x: RUDOLPH.x1 * sx,
+        duration: RUDOLPH_WALK,
         ease: 'Sine.easeOut',
         onComplete: () => {
-          noseGlow.setVisible(true).setAlpha(0.55);
+          stepBob.stop();
+          body.setY(RUDOLPH.y * sy).setAngle(0);
+          noseGlow.setVisible(true).setAlpha(0.5);
           this.tweens.add({
             targets: noseGlow,
             alpha: 0.9,
@@ -872,15 +808,29 @@ export class Christmas2026Scene extends Phaser.Scene {
             repeat: -1,
             ease: 'Sine.easeInOut',
           });
+
           this.time.delayedCall(RUDOLPH_HOLD, () => {
             this.tweens.killTweensOf(noseGlow);
             noseGlow.setVisible(false);
+            body.setFlipX(true);
             this.tweens.add({
               targets: body,
-              y: RUDOLPH.hideY * sy,
-              duration: 850,
+              y: (RUDOLPH.y - 5) * sy,
+              angle: -1.5,
+              duration: 240,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut',
+            });
+            this.tweens.add({
+              targets: body,
+              x: RUDOLPH.x0 * sx,
+              duration: RUDOLPH_WALK,
               ease: 'Sine.easeIn',
-              onComplete: () => body.setVisible(false),
+              onComplete: () => {
+                this.tweens.killTweensOf(body);
+                body.setVisible(false);
+              },
             });
           });
         },
@@ -888,10 +838,10 @@ export class Christmas2026Scene extends Phaser.Scene {
     };
   }
 
-  /** Beat 3: The Grinch sneaks up outside the window, scattering the elves. */
+  /** Beat 3: Full-body Grinch tiptoes up outside the window, scattering the elves. */
   private setupGrinch(sx: number, sy: number): void {
     const body = this.add
-      .image(GRINCH.x0 * sx, GRINCH.hideY * sy, 'xmas-grinch')
+      .image(GRINCH.x0 * sx, GRINCH.y * sy, 'xmas-grinch')
       .setOrigin(0.5, 1)
       .setScale(sx * GRINCH.scale)
       .setDepth(1.5)
@@ -902,31 +852,56 @@ export class Christmas2026Scene extends Phaser.Scene {
       this.tweens.killTweensOf(body);
       body
         .setVisible(true)
-        .setAngle(0)
-        .setPosition(GRINCH.x0 * sx, GRINCH.hideY * sy);
+        .setFlipX(true)
+        .setAngle(-3)
+        .setPosition(GRINCH.x0 * sx, GRINCH.y * sy);
+
+      const tiptoe = this.tweens.add({
+        targets: body,
+        y: (GRINCH.y - 6) * sy,
+        angle: 3,
+        duration: 280,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
 
       this.tweens.add({
         targets: body,
-        y: GRINCH.showY * sy,
-        duration: 850,
-        ease: 'Back.easeOut',
+        x: GRINCH.x1 * sx,
+        duration: GRINCH_WALK,
+        ease: 'Sine.easeOut',
         onComplete: () => {
+          tiptoe.stop();
+          body.setY(GRINCH.y * sy).setAngle(0);
           this.tweens.add({
             targets: body,
-            x: GRINCH.x1 * sx,
-            angle: 5,
-            duration: 1800,
+            angle: 4,
+            duration: 900,
             yoyo: true,
+            repeat: -1,
             ease: 'Sine.easeInOut',
           });
+
           this.time.delayedCall(GRINCH_HOLD, () => {
+            this.tweens.killTweensOf(body);
+            body.setFlipX(false);
             this.tweens.add({
               targets: body,
-              y: GRINCH.hideY * sy,
-              angle: 0,
-              duration: 750,
-              ease: 'Quad.easeIn',
+              y: (GRINCH.y - 6) * sy,
+              angle: -3,
+              duration: 280,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut',
+            });
+            this.tweens.add({
+              targets: body,
+              x: GRINCH.x0 * sx,
+              duration: GRINCH_WALK,
+              ease: 'Sine.easeIn',
               onComplete: () => {
+                this.tweens.killTweensOf(body);
                 body.setVisible(false);
                 this.freeElves();
               },
@@ -937,13 +912,13 @@ export class Christmas2026Scene extends Phaser.Scene {
     };
   }
 
-  /** Beat 4: Miniature steam locomotive chugs across the foreground floorboards. */
+  /** Beat 4: Miniature steam locomotive enters from the left, loops around Ace's bed, and exits left. */
   private setupTrain(sx: number, sy: number): void {
     const train = this.add
-      .image(TRAIN.x0 * sx, TRAIN.y * sy, 'xmas-train')
+      .image(TRAIN.xStart * sx, TRAIN.yFront * sy, 'xmas-train')
       .setOrigin(0.5, 1)
       .setScale(sx * TRAIN.scale)
-      .setDepth(6)
+      .setDepth(4.2)
       .setVisible(false);
 
     let steamTimer: Phaser.Time.TimerEvent | undefined;
@@ -953,12 +928,17 @@ export class Christmas2026Scene extends Phaser.Scene {
       this.tweens.killTweensOf(train);
       steamTimer?.remove(false);
 
-      train.setVisible(true).setPosition(TRAIN.x0 * sx, TRAIN.y * sy);
+      train
+        .setVisible(true)
+        .setTexture('xmas-train')
+        .setFlipX(false)
+        .setDepth(4.2)
+        .setPosition(TRAIN.xStart * sx, TRAIN.yFront * sy);
+
       this.tweens.add({
         targets: train,
-        y: (TRAIN.y - 2) * sy,
-        scaleY: sx * TRAIN.scale * 1.04,
-        duration: 160,
+        scaleY: sx * TRAIN.scale * 1.05,
+        duration: 140,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -969,35 +949,78 @@ export class Christmas2026Scene extends Phaser.Scene {
         loop: true,
         callback: () => {
           if (!train.visible) return;
+          const isSide = train.texture.key === 'xmas-train';
+          const dir = isSide ? (train.flipX ? -1 : 1) : 0;
           const puff = this.add
-            .image(train.x + 18 * sx, train.y - 48 * sy, 'xmas-steam')
+            .image(train.x + dir * 14 * sx, train.y - 48 * sy, 'xmas-steam')
             .setAlpha(0.85)
-            .setScale(sx * 0.8)
-            .setDepth(5.9);
+            .setScale(sx * 0.75)
+            .setDepth(train.depth + 0.05);
           this.tweens.add({
             targets: puff,
-            x: puff.x - Phaser.Math.Between(14, 28) * sx,
-            y: puff.y - Phaser.Math.Between(28, 52) * sy,
-            scale: sx * 1.9,
+            x: puff.x + (dir ? -dir * Phaser.Math.Between(10, 22) : Phaser.Math.Between(-8, 8)) * sx,
+            y: puff.y - Phaser.Math.Between(24, 44) * sy,
+            scale: sx * 1.7,
             alpha: 0,
-            duration: Phaser.Math.Between(900, 1400),
+            duration: Phaser.Math.Between(850, 1300),
             ease: 'Sine.easeOut',
             onComplete: () => puff.destroy(),
           });
         },
       });
 
+      // Leg 1: Enter from left and chug across the front floorboards past Ace's bed (depth 4.2).
       this.tweens.add({
         targets: train,
-        x: TRAIN.x1 * sx,
-        duration: TRAIN_MS,
+        x: TRAIN.xRight * sx,
+        duration: 6200,
         ease: 'Linear',
         onComplete: () => {
-          steamTimer?.remove(false);
-          steamTimer = undefined;
-          this.tweens.killTweensOf(train);
-          train.setVisible(false);
-          this.freeElves();
+          // Leg 2: Rear view ('xmas-train-up') while chugging up the right side of Ace's bed.
+          train.setTexture('xmas-train-up').setFlipX(false);
+          this.tweens.add({
+            targets: train,
+            y: TRAIN.yBack * sy,
+            duration: 1300,
+            ease: 'Sine.easeInOut',
+            onComplete: () => {
+              // Leg 3: Side view flipped left ('xmas-train') chugging BEHIND Ace's dog bed (depth 3.2 < bed 3.6).
+              train.setTexture('xmas-train').setFlipX(true).setDepth(3.2);
+              this.tweens.add({
+                targets: train,
+                x: TRAIN.xLeft * sx,
+                duration: 3200,
+                ease: 'Linear',
+                onComplete: () => {
+                  // Leg 4: Front view ('xmas-train-down') chugging down the left side of Ace's bed (depth 4.2).
+                  train.setTexture('xmas-train-down').setFlipX(false).setDepth(4.2);
+                  this.tweens.add({
+                    targets: train,
+                    y: TRAIN.yFront * sy,
+                    duration: 1300,
+                    ease: 'Sine.easeInOut',
+                    onComplete: () => {
+                      // Leg 5: Side view flipped left ('xmas-train') chugging back out to the left.
+                      train.setTexture('xmas-train').setFlipX(true);
+                      this.tweens.add({
+                        targets: train,
+                        x: TRAIN.xStart * sx,
+                        duration: 3800,
+                        ease: 'Linear',
+                        onComplete: () => {
+                          steamTimer?.remove(false);
+                          steamTimer = undefined;
+                          this.tweens.killTweensOf(train);
+                          train.setVisible(false);
+                          this.freeElves();
+                        },
+                      });
+                    },
+                  });
+                },
+              });
+            },
+          });
         },
       });
     };
