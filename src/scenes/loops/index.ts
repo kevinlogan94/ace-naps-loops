@@ -1,3 +1,4 @@
+import { Christmas2026Scene } from './christmas-2026/Christmas2026Scene';
 import { FallYardScene } from './fall-yard/FallYardScene';
 import { PumpkinPatchScene } from './pumpkin-patch/PumpkinPatchScene';
 
@@ -5,6 +6,7 @@ import { PumpkinPatchScene } from './pumpkin-patch/PumpkinPatchScene';
 const loops = {
   'fall-yard': FallYardScene,
   'pumpkin-patch': PumpkinPatchScene,
+  'christmas-2026': Christmas2026Scene,
 } as const;
 
 export const DEFAULT_LOOP = 'fall-yard';
