@@ -1127,8 +1127,8 @@ export class Christmas2026Scene extends Phaser.Scene {
     const scaleX = sx * S;
     const scaleY = sy * S;
     const HIDDEN_Y = 184 * sy;
-    const PEEK_Y = 248 * sy;
-    const STUCK_Y = 326 * sy;
+    const PEEK_Y = 244 * sy;
+    const STUCK_Y = 308 * sy;
     const LEG_Y = 74 * scaleY;
     const NIGHT_TINT = 0x9c98aa;
 
@@ -1201,15 +1201,15 @@ export class Christmas2026Scene extends Phaser.Scene {
       legR.setAngle(0).setY(LEG_Y);
     };
 
-    const kickLegs = (degOut: number, degIn: number, dur: number, repeats: number) => {
+    const kickLegs = (degOut: number, dur: number, repeats: number) => {
       resetLegs();
-      for (const [leg, from, to, delay] of [
-        [legL, degOut, -degIn, 0],
-        [legR, degIn, -degOut, Math.round(dur * 0.45)],
+      for (const [leg, outAngle, delay] of [
+        [legL, -degOut, 0],
+        [legR, degOut, Math.round(dur * 0.5)],
       ] as const) {
         this.tweens.add({
           targets: leg,
-          angle: { from, to },
+          angle: outAngle,
           y: LEG_Y - 5 * sy,
           duration: dur,
           delay,
@@ -1309,7 +1309,7 @@ export class Christmas2026Scene extends Phaser.Scene {
       at(4100, () => {
         santaRig.setVisible(true).setPosition(SANTA_X, HIDDEN_Y).setAngle(0);
         dropSoot(5);
-        this.tweens.add({ targets: santaRig, y: PEEK_Y, duration: 650, ease: 'Sine.easeOut', onComplete: () => kickLegs(14, 8, 220, 1) });
+        this.tweens.add({ targets: santaRig, y: PEEK_Y, duration: 650, ease: 'Sine.easeOut', onComplete: () => kickLegs(14, 220, 1) });
       });
       at(5450, () => {
         dropSoot(7);
@@ -1317,7 +1317,7 @@ export class Christmas2026Scene extends Phaser.Scene {
       });
       at(6700, () => {
         dropSoot(6, true);
-        kickLegs(22, 10, 230, 2);
+        kickLegs(22, 230, 2);
         this.tweens.add({
           targets: santaRig,
           angle: { from: -3, to: 3 },
@@ -1330,12 +1330,12 @@ export class Christmas2026Scene extends Phaser.Scene {
       });
       at(8600, () => {
         dropSoot(8, true);
-        kickLegs(26, 12, 190, 3);
+        kickLegs(26, 190, 3);
         this.tweens.add({ targets: santaRig, y: STUCK_Y - 14 * sy, duration: 420, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
       });
       at(10800, () => {
         dropSoot(5);
-        kickLegs(18, 10, 180, 1);
+        kickLegs(18, 180, 1);
         this.tweens.add({ targets: santaRig, y: PEEK_Y + 8 * sy, duration: 480, ease: 'Quad.easeOut' });
       });
       at(11550, () => {
