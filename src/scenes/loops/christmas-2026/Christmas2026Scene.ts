@@ -128,7 +128,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     chimney: () => {},
   };
   private fireLevel = 1;
-  private fx = { fire: 0.85, flash: 0, nose: 0, lampX: 0, lampY: 0, lamp: 0 };
+  private fx = { fire: 0.85, flash: 0, lampX: 0, lampY: 0, lamp: 0 };
   private lit: Record<string, Phaser.GameObjects.Image> = {};
   private trainCars: Phaser.GameObjects.Image[] = [];
   private setFire: (level: number, dur: number) => void = () => {};
@@ -211,7 +211,7 @@ export class Christmas2026Scene extends Phaser.Scene {
 
     this.spawnElves(sx, sy);
     this.setupSleigh(sx, sy);
-    this.setupRudolph(sx, sy);
+    this.setupRudolph();
     this.setupGrinch(sx, sy);
     this.setupTrain(sx, sy);
     this.setupChimney(sx, sy);
@@ -887,7 +887,6 @@ export class Christmas2026Scene extends Phaser.Scene {
     flipIn: boolean;
     onStart?: () => void;
     onArrive?: (body: Phaser.GameObjects.Image) => void;
-    onLeave?: () => void;
     onDone?: () => void;
   }): void {
     const { sx, sy } = this;
@@ -911,7 +910,6 @@ export class Christmas2026Scene extends Phaser.Scene {
           body.setY(cfg.y * sy).setAngle(0);
           cfg.onArrive?.(body);
           holdTimer = this.time.delayedCall(cfg.hold, () => {
-            cfg.onLeave?.();
             this.tweens.killTweensOf(body);
             body.setFlipX(!cfg.flipIn).setAngle(cfg.bobAng);
             this.pulse(body, { y: (cfg.y - cfg.bobY) * sy, angle: -cfg.bobAng }, cfg.bobDur);
@@ -932,15 +930,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     };
   }
 
-  private setupRudolph(sx: number, sy: number): void {
-    const nx = 713;
-    const ny = 386;
-    const noseHalo = this.glow(nx, ny, 108, 108, 1.6, 0, 'xmas-light', 0xff2828).setVisible(false);
-    const noseCore = this.glow(nx, ny, 28, 28, 1.62, 0, 'xmas-bulb', 0xff4242).setVisible(false);
-    const noseSpill = this.glow(740, 452, 340, 150, 2.02, 0, 'xmas-light', 0xff3030).setVisible(false);
-    const lights = [noseHalo, noseCore, noseSpill];
-    let noseTween: Phaser.Tweens.Tween | undefined;
-
+  private setupRudolph(): void {
     this.setupWindowVisitor({
       who: 'rudolph',
       key: 'rudolph',
@@ -954,29 +944,6 @@ export class Christmas2026Scene extends Phaser.Scene {
       bobAng: 1.5,
       bobDur: 240,
       flipIn: false,
-      onStart: () => {
-        noseTween?.stop();
-        this.fx.nose = 0;
-        lights.forEach((l) => (this.tweens.killTweensOf(l), l.setVisible(false).setAlpha(0)));
-      },
-      onArrive: () => {
-        noseHalo.setVisible(true).setDisplaySize(108 * sx, 108 * sy).setAlpha(0.45);
-        noseCore.setVisible(true).setDisplaySize(28 * sx, 28 * sy).setAlpha(0.75);
-        noseSpill.setVisible(true).setAlpha(0.14);
-        this.fx.nose = 0.55;
-        noseTween = this.pulse(this.fx, { nose: 1 }, 520);
-        this.pulse(noseHalo, { alpha: 0.78, displayWidth: 126 * sx, displayHeight: 126 * sy }, 520);
-        this.pulse(noseCore, { alpha: 1, displayWidth: 34 * sx, displayHeight: 34 * sy }, 520);
-        this.pulse(noseSpill, { alpha: 0.28 }, 520);
-      },
-      onLeave: () => {
-        noseTween?.stop();
-        noseTween = this.tweens.add({ targets: this.fx, nose: 0, duration: 260 });
-        lights.forEach((l) => {
-          this.tweens.killTweensOf(l);
-          this.tweens.add({ targets: l, alpha: 0, duration: 260, onComplete: () => l.setVisible(false) });
-        });
-      },
     });
   }
 
@@ -1400,7 +1367,6 @@ export class Christmas2026Scene extends Phaser.Scene {
       [180, 475, 580, 460, 1.0, 0.75, 0.32, 0.76 * (0.94 + 0.08 * Math.sin(t * 0.0026))], // tree
       [688, 360, 470, 420, 0.48, 0.68, 0.96, 0.52 * (0.94 + 0.06 * Math.sin(t * 0.0015))], // moonlight
       [1118, 164, 440, 460, 1.0, 0.74, 0.34, 0.24 * (0.9 + 0.14 * Math.sin(t * 0.011))], // candles
-      [713, 386, 440, 380, 1.0, 0.16, 0.14, 0.5 * fx.nose], // Rudolph's nose
       [fx.lampX, fx.lampY, 260, 190, 1.0, 0.84, 0.44, 0.72 * fx.lamp], // train headlamp
     ];
 
@@ -1472,13 +1438,10 @@ export class Christmas2026Scene extends Phaser.Scene {
     tintH(lit['cabin-foreground'], rgb(treeL, treeL * 0.98, 0.96), rgb(rr, rg, rb));
 
     const lampNear = fx.lamp ? Math.max(0, 1 - Math.hypot(fx.lampX - BED.x, fx.lampY - BED.y) / 340) * 0.1 : 0;
-    tintH(lit.bed, rgb(0.95 + fx.nose * 0.1 + lampNear, 0.96 + lampNear * 0.85, 0.99), rgb(rr + fx.nose * 0.06 + lampNear, rg + lampNear * 0.85, rb));
+    tintH(lit.bed, rgb(0.95 + lampNear, 0.96 + lampNear * 0.85, 0.99), rgb(rr + lampNear, rg + lampNear * 0.85, rb));
 
-    // Outdoor window visitors (moonlit snow + Rudolph's own nose glow).
-    if (lit.rudolph?.visible) {
-      const n = fx.nose;
-      tintQuad(lit.rudolph, rgb(0.62 + n * 0.38, 0.72 - n * 0.12, 0.92 - n * 0.24), rgb(0.72 + n * 0.14, 0.82 - n * 0.06, 0.98 - n * 0.12), rgb(0.46 + n * 0.28, 0.56 - n * 0.08, 0.78 - n * 0.18), rgb(0.5 + n * 0.08, 0.6, 0.82 - n * 0.08));
-    }
+    // Outdoor window visitors (moonlit snow).
+    if (lit.rudolph?.visible) tintQuad(lit.rudolph, 0x9eb8eb, 0xb8d1fa, 0x758fc7, 0x8099d1);
     if (lit.grinch?.visible) tintQuad(lit.grinch, 0x8fadde, 0xbdd6ff, 0x6b84b8, 0x8aa3d6);
   }
 
