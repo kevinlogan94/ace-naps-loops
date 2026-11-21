@@ -1,6 +1,6 @@
 import { formatTime } from '../../../systems/storyClock';
 
-export type ChristmasWho = 'sleigh' | 'rudolph' | 'grinch' | 'train';
+export type ChristmasWho = 'sleigh' | 'rudolph' | 'grinch' | 'train' | 'chimney';
 
 let onH: ((e: KeyboardEvent) => void) | undefined;
 

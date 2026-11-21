@@ -3,71 +3,34 @@ import { PLATE_H, PLATE_W } from '../../../plate';
 import { crossedBeat, formatTime, wrap } from '../../../systems/storyClock';
 import aceUrl from '../pumpkin-patch/images/ace.png';
 import { type ChristmasWho, mountChristmas2026Editor } from './christmas2026Editor';
-import bedUrl from './images/bed.png';
-import foregroundUrl from './images/cabin-foreground.png';
-import interiorUrl from './images/cabin-interior.png';
-import car1DownUrl from './images/car1-down.png';
-import car1UpUrl from './images/car1-up.png';
-import car1Url from './images/car1.png';
-import car2DownUrl from './images/car2-down.png';
-import car2UpUrl from './images/car2-up.png';
-import car2Url from './images/car2.png';
-import elf0Url from './images/elf-0.png';
-import elf1Url from './images/elf-1.png';
-import elf2Url from './images/elf-2.png';
-import elf3Url from './images/elf-3.png';
-import fireUrl from './images/fire.png';
-import grinchUrl from './images/grinch.png';
-import outsideUrl from './images/outside.jpg';
-import rudolphUrl from './images/rudolph.png';
-import sleigh0Url from './images/sleigh-0.png';
-import sleigh1Url from './images/sleigh-1.png';
-import sleigh2Url from './images/sleigh-2.png';
-import sleigh3Url from './images/sleigh-3.png';
-import sleigh4Url from './images/sleigh-4.png';
-import sleigh5Url from './images/sleigh-5.png';
-import starUrl from './images/star.png';
-import trackUrl from './images/track.png';
-import trainDownUrl from './images/train-down.png';
-import trainUpUrl from './images/train-up.png';
-import trainUrl from './images/train.png';
 
-/** Source plate is 1376×768. Positions below are in those pixels. */
+/** Source plate is 1376×768. All scene positions below are in those pixels. */
 const SRC_W = 1376;
 const SRC_H = 768;
-
 const BED = { x: 690, y: 662 };
 const ACE_SCALE = 1.32;
 
-/** Outdoor window bounds (clipped automatically by cabin-interior.png at depth 1.8). */
+const IMAGES: [string, string][] = [
+  ...Object.entries(
+    import.meta.glob('./images/*.{png,jpg}', { eager: true, import: 'default' }) as Record<string, string>,
+  ).map(([path, url]): [string, string] => [path.match(/\/([^/]+)\.[^.]+$/)![1], url]),
+  ['ace', aceUrl],
+];
+
+/** Outdoor window bounds (masked automatically by cabin-interior at depth 1.8). */
 const OUTSIDE = { x0: 378, x1: 996, y0: 64, y1: 442, wind: 3 };
 const SNOW_COUNT = 36;
 
-/** Mantel candle wick bases on the left of the fireplace mantel. */
 const CANDLES = [
   { x: 1106, y: 170, s: 0.9 },
   { x: 1131, y: 158, s: 1.05 },
 ] as const;
 
-/** Twinkling star positions in the night sky outside the bay windows. */
 const SKY_STARS: [number, number][] = [
-  [408, 118],
-  [470, 146],
-  [564, 122],
-  [596, 178],
-  [632, 112],
-  [654, 214],
-  [688, 152],
-  [712, 232],
-  [766, 224],
-  [808, 186],
-  [820, 118],
-  [898, 134],
-  [962, 116],
-  [974, 170],
+  [408, 118], [470, 146], [564, 122], [596, 178], [632, 112], [654, 214], [688, 152],
+  [712, 232], [766, 224], [808, 186], [820, 118], [898, 134], [962, 116], [974, 170],
 ];
 
-/** Tree star and all 81 fairy-light bulb positions in source pixels. */
 const TREE_STAR = { x: 168, y: 34 };
 const TREE_LIGHTS: [number, number][] = [
   [180, 80], [146, 93], [190, 103], [223, 119], [166, 121], [120, 122], [199, 121], [143, 140], [236, 182],
@@ -81,95 +44,26 @@ const TREE_LIGHTS: [number, number][] = [
   [330, 489], [44, 491], [99, 499], [62, 497], [181, 498], [131, 503], [151, 511], [116, 514], [250, 519],
 ];
 
-/** Distant sleigh silhouette with 2-frame galloping reindeer crossing the moon. */
-const SLEIGH = { x0: 330, x1: 1040, y0: 162, y1: 138, scale: 0.24 };
-const SLEIGH_MS = 16_000;
+const SLEIGH = { x0: 330, x1: 1040, y0: 162, y1: 138, scale: 0.24, ms: 16_000 };
+const TRAIN = { xStart: -90, xLeft: 475, xRight: 918, yFront: 742, yBack: 612, carGap: 62, scale: 0.48, ms: 17_500 };
 
-/** Full-body Rudolph walks up to the window from the right treeline, pauses, and walks back. */
-const RUDOLPH = { x0: 1060, x1: 758, y: 488, scale: 0.72 };
-const RUDOLPH_WALK = 2600;
-const RUDOLPH_HOLD = 4500;
-
-/** Full-body Grinch tiptoes up outside the left/center window, peers at the gifts, and sneaks off. */
-const GRINCH = { x0: 310, x1: 604, y: 482, scale: 0.72 };
-const GRINCH_WALK = 2400;
-const GRINCH_HOLD = 4200;
-
-/** Miniature 3-car toy steam train enters from the left, loops around Ace's bed on the track, and exits left. */
-const TRAIN = {
-  xStart: -90,
-  xLeft: 475,
-  xRight: 918,
-  yFront: 742,
-  yBack: 612,
-  carGap: 62,
-  scale: 0.48,
-  durationMs: 17_500,
-};
-
-/** Four 16-bit elves hide behind the cabin-foreground.png gift/log layer (depth 3.5). */
+/** Four 16-bit elves hide behind the cabin-foreground gift/log layer (depth 3.5). */
 const ELF_SCALE = 0.44;
-const ELF_TEX_H = 148;
-const ELF_SRC_H = ELF_TEX_H * ELF_SCALE * (PLATE_W / SRC_W) / (PLATE_H / SRC_H);
+const ELF_SRC_H = (148 * ELF_SCALE * (PLATE_W / SRC_W)) / (PLATE_H / SRC_H);
 const PEEK = 36;
 const ELF_GAP = 2 * 60 * 1000;
 
-const ELVES_CFG: {
-  key: string;
-  hide: { x: number; y: number };
-  rim: number;
-  points: { x: number; y: number }[];
-}[] = [
-  // Elf 0 (green hat): hides behind the medium green gift box, jumps out onto the front rug.
-  {
-    key: 'elf-0',
-    hide: { x: 222, y: 660 },
-    rim: 586,
-    points: [
-      { x: 206, y: 696 },
-      { x: 268, y: 712 },
-      { x: 332, y: 702 },
-    ],
-  },
-  // Elf 1 (red hat): hides behind the tall gold gift box, jumps out toward Ace's bed.
-  {
-    key: 'elf-1',
-    hide: { x: 326, y: 636 },
-    rim: 548,
-    points: [
-      { x: 396, y: 676 },
-      { x: 446, y: 704 },
-      { x: 382, y: 716 },
-    ],
-  },
-  // Elf 2 (striped hat): hides behind the left red gift box, jumps out onto the left rug.
-  {
-    key: 'elf-2',
-    hide: { x: 58, y: 642 },
-    rim: 558,
-    points: [
-      { x: 124, y: 694 },
-      { x: 178, y: 714 },
-      { x: 112, y: 718 },
-    ],
-  },
-  // Elf 3 (gold-trimmed hat): hides behind the firewood logs, jumps out toward the milk & cookies.
-  {
-    key: 'elf-3',
-    hide: { x: 1300, y: 705 },
-    rim: 622,
-    points: [
-      { x: 1152, y: 678 },
-      { x: 1072, y: 704 },
-      { x: 1134, y: 726 },
-    ],
-  },
+const ELVES_CFG: { key: string; hide: [number, number]; rim: number; points: [number, number][] }[] = [
+  { key: 'elf-0', hide: [222, 660], rim: 586, points: [[206, 696], [268, 712], [332, 702]] },
+  { key: 'elf-1', hide: [326, 636], rim: 548, points: [[396, 676], [446, 704], [382, 716]] },
+  { key: 'elf-2', hide: [58, 642], rim: 558, points: [[124, 694], [178, 714], [112, 718]] },
+  { key: 'elf-3', hide: [1300, 705], rim: 622, points: [[1152, 678], [1072, 704], [1134, 726]] },
 ];
 
 type Elf = {
   sprite: Phaser.GameObjects.Image;
-  points: { x: number; y: number }[];
-  hide: { x: number; y: number };
+  points: [number, number][];
+  hide: [number, number];
   rim: number;
   step: number;
   mood: 'open' | 'bolt' | 'hide' | 'peek' | 'creep';
@@ -181,6 +75,7 @@ const BEATS: { sec: number; who: ChristmasWho }[] = [
   { sec: 60, who: 'sleigh' },
   { sec: 210, who: 'rudolph' },
   { sec: 360, who: 'train' },
+  { sec: 435, who: 'chimney' },
   { sec: 510, who: 'grinch' },
   { sec: 660, who: 'sleigh' },
   { sec: 780, who: 'rudolph' },
@@ -192,6 +87,16 @@ export class Christmas2026Scene extends Phaser.Scene {
   private sx = 1;
   private sy = 1;
   private snow: { sprite: Phaser.GameObjects.Image; speed: number; phase: number }[] = [];
+  private motes: {
+    sprite: Phaser.GameObjects.Image;
+    x0: number;
+    y0: number;
+    ampX: number;
+    ampY: number;
+    speed: number;
+    phase: number;
+    maxAlpha: number;
+  }[] = [];
   private elves: Elf[] = [];
   private elfTurn = 0;
   private elfHolds = 0;
@@ -204,45 +109,22 @@ export class Christmas2026Scene extends Phaser.Scene {
   private clock!: Phaser.GameObjects.Text;
   private editor?: { tick: (ms: number) => void; destroy: () => void };
 
-  private runSleigh: () => void = () => {};
-  private runRudolph: () => void = () => {};
-  private runGrinch: () => void = () => {};
-  private runTrain: () => void = () => {};
+  private runners: Record<ChristmasWho, () => void> = {
+    sleigh: () => {},
+    rudolph: () => {},
+    grinch: () => {},
+    train: () => {},
+    chimney: () => {},
+  };
+  private fireLevel = 1;
+  private setFire: (level: number, dur: number) => void = () => {};
 
   constructor() {
     super('Christmas2026');
   }
 
   preload(): void {
-    this.load.image('outside', outsideUrl);
-    this.load.image('cabin-interior', interiorUrl);
-    this.load.image('cabin-foreground', foregroundUrl);
-    this.load.image('ace-bed', bedUrl);
-    this.load.image('ace-christmas', aceUrl);
-    this.load.image('xmas-fire', fireUrl);
-    this.load.image('xmas-star', starUrl);
-    this.load.image('xmas-sleigh-0', sleigh0Url);
-    this.load.image('xmas-sleigh-1', sleigh1Url);
-    this.load.image('xmas-sleigh-2', sleigh2Url);
-    this.load.image('xmas-sleigh-3', sleigh3Url);
-    this.load.image('xmas-sleigh-4', sleigh4Url);
-    this.load.image('xmas-sleigh-5', sleigh5Url);
-    this.load.image('xmas-rudolph', rudolphUrl);
-    this.load.image('xmas-grinch', grinchUrl);
-    this.load.image('xmas-track', trackUrl);
-    this.load.image('xmas-train', trainUrl);
-    this.load.image('xmas-train-up', trainUpUrl);
-    this.load.image('xmas-train-down', trainDownUrl);
-    this.load.image('xmas-car1', car1Url);
-    this.load.image('xmas-car1-up', car1UpUrl);
-    this.load.image('xmas-car1-down', car1DownUrl);
-    this.load.image('xmas-car2', car2Url);
-    this.load.image('xmas-car2-up', car2UpUrl);
-    this.load.image('xmas-car2-down', car2DownUrl);
-    this.load.image('elf-0', elf0Url);
-    this.load.image('elf-1', elf1Url);
-    this.load.image('elf-2', elf2Url);
-    this.load.image('elf-3', elf3Url);
+    for (const [key, url] of IMAGES) this.load.image(key, url);
   }
 
   create(): void {
@@ -251,81 +133,42 @@ export class Christmas2026Scene extends Phaser.Scene {
     this.sy = PLATE_H / SRC_H;
     const { sx, sy } = this;
 
-    for (const key of [
-      'outside',
-      'cabin-interior',
-      'cabin-foreground',
-      'ace-bed',
-      'ace-christmas',
-      'xmas-fire',
-      'xmas-star',
-      'xmas-sleigh-0',
-      'xmas-sleigh-1',
-      'xmas-sleigh-2',
-      'xmas-sleigh-3',
-      'xmas-sleigh-4',
-      'xmas-sleigh-5',
-      'xmas-rudolph',
-      'xmas-grinch',
-      'xmas-track',
-      'xmas-train',
-      'xmas-train-up',
-      'xmas-train-down',
-      'xmas-car1',
-      'xmas-car1-up',
-      'xmas-car1-down',
-      'xmas-car2',
-      'xmas-car2-up',
-      'xmas-car2-down',
-      'elf-0',
-      'elf-1',
-      'elf-2',
-      'elf-3',
-    ]) {
-      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    for (const [key] of IMAGES) this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    this.makeTextures();
+
+    // Full-plate layers: sky/snow -> cabin -> hearth mask -> train track -> foreground -> bed -> vignette.
+    for (const [key, depth] of [
+      ['outside', 0],
+      ['cabin-interior', 1.8],
+      ['hearth-frame', 2.15],
+      ['track', 2.3],
+      ['cabin-foreground', 3.5],
+      ['bed', 3.6],
+      ['xmas-vignette', 4.8],
+    ] as const) {
+      this.add.image(0, 0, key).setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(depth);
     }
 
-    // Layer 1 (depth 0): Pure outdoor Winter Wonderland backdrop.
-    this.add.image(0, 0, 'outside').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(0);
+    // Window corner frost & faint glass reflection (masked by cabin-interior at depth 1.8).
+    this.add
+      .image(OUTSIDE.x0 * sx, OUTSIDE.y0 * sy, 'xmas-window-frost')
+      .setOrigin(0)
+      .setDisplaySize((OUTSIDE.x1 - OUTSIDE.x0) * sx, (OUTSIDE.y1 - OUTSIDE.y0) * sy)
+      .setDepth(1.7);
 
-    // Layer 2 (depth 1.8): Cabin interior with transparent window panes.
-    this.add.image(0, 0, 'cabin-interior').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(1.8);
-
-    // Layer 2.3: Toy train track on the cabin floorboards (loops behind bed.png at depth 3.6).
-    this.add.image(0, 0, 'xmas-track').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(2.3);
-
-    // Layer 3 (depth 3.5): Foreground presents, firewood logs, and right fireplace pillar.
-    this.add.image(0, 0, 'cabin-foreground').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(3.5);
-
-    // Layer 4 (depth 3.6): Dedicated layer for Ace's dog bed.
-    this.add.image(0, 0, 'ace-bed').setOrigin(0).setDisplaySize(PLATE_W, PLATE_H).setDepth(3.6);
-
-    this.makeTextures();
     this.lightSky(sx, sy);
     this.spawnSnow();
     this.lightTree(sx, sy);
     this.lightCandles(sx, sy);
     this.lightHearth(sx, sy);
+    this.spawnMotes(sx, sy);
 
-    // Ace curled up on top of the dedicated bed.png layer (depth 3.7).
-    const ace = this.add
-      .image(BED.x * sx, BED.y * sy, 'ace-christmas')
-      .setOrigin(0.5, 0.78)
-      .setScale(ACE_SCALE)
-      .setDepth(3.7);
-
-    this.tweens.add({
-      targets: ace,
-      scaleY: ACE_SCALE * 1.035,
-      duration: 1600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-
+    // Ace curled up on bed.png (depth 3.7) with gentle breathing and floating Zzz.
+    const ace = this.add.image(BED.x * sx, BED.y * sy, 'ace').setOrigin(0.5, 0.78).setScale(ACE_SCALE).setDepth(3.7);
+    this.pulse(ace, { scaleY: ACE_SCALE * 1.035 }, 1600);
     this.snout = {
       x: ace.x + (0.38 - 0.5) * ace.width * ACE_SCALE,
-      y: ace.y + (0 - 0.78) * ace.height * ACE_SCALE,
+      y: ace.y - 0.78 * ace.height * ACE_SCALE,
     };
     const zFont = Math.round((12 * PLATE_H) / 270);
     for (let i = 0; i < 3; i++) {
@@ -347,6 +190,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     this.setupRudolph(sx, sy);
     this.setupGrinch(sx, sy);
     this.setupTrain(sx, sy);
+    this.setupChimney(sx, sy);
 
     this.clock = this.add
       .text(8, 8, '', { fontFamily: 'monospace', fontSize: `${Math.round((8 * PLATE_H) / 270)}px`, color: '#f4e8c8' })
@@ -360,18 +204,36 @@ export class Christmas2026Scene extends Phaser.Scene {
         this.skipBeat = true;
         this.storyMs = wrap(ms);
       },
-      play: (who) => this.playBeat(who),
+      play: (who) => this.runners[who](),
       elf: () => this.nextElf(),
       setHud: (on) => this.clock.setVisible(on),
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.editor?.destroy());
   }
 
-  private playBeat(who: ChristmasWho): void {
-    if (who === 'sleigh') this.runSleigh();
-    else if (who === 'rudolph') this.runRudolph();
-    else if (who === 'grinch') this.runGrinch();
-    else this.runTrain();
+  /** Additive glow sprite positioned & sized in source pixels. */
+  private glow(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    depth: number,
+    alpha: number,
+    key = 'xmas-light',
+    tint?: number,
+  ): Phaser.GameObjects.Image {
+    const img = this.add
+      .image(x * this.sx, y * this.sy, key)
+      .setDisplaySize(w * this.sx, h * this.sy)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(depth)
+      .setAlpha(alpha);
+    return tint !== undefined ? img.setTint(tint) : img;
+  }
+
+  /** Infinite Sine.easeInOut yoyo tween helper. */
+  private pulse(targets: object, props: Record<string, unknown>, duration: number, delay = 0): Phaser.Tweens.Tween {
+    return this.tweens.add({ targets, ...props, duration, delay, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 
   private makeTextures(): void {
@@ -383,43 +245,39 @@ export class Christmas2026Scene extends Phaser.Scene {
         for (let x = 0; x < row.length; x++) {
           const ch = row[x];
           if (ch === '.') continue;
-          g.fillStyle(palette[ch], 1);
-          g.fillRect(x * cell, y * cell, cell, cell);
+          g.fillStyle(palette[ch], 1).fillRect(x * cell, y * cell, cell, cell);
         }
       });
       g.generateTexture(key, rows[0].length * cell, rows.length * cell);
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
     };
 
-    drawGrid('xmas-flake', ['.w.', 'www', '.w.'], { w: 0xf4f8ff }, 2);
-    drawGrid('xmas-steam', ['..ww..', '.wwww.', 'wwwwww', '.wwww.', '..ww..'], { w: 0xf4f0e8 }, 2);
+    drawGrid('xmas-flake', ['.w.', 'www', '.w.'], { w: 0xf4f8ff });
+    drawGrid('xmas-steam', ['..ww..', '.wwww.', 'wwwwww', '.wwww.', '..ww..'], { w: 0xf4f0e8 });
     drawGrid(
       'xmas-sparkle',
       ['...y...', '...y...', '..yyy..', 'yyyyyyy', '..yyy..', '...y...', '...y...'],
       { y: 0xffe878 },
-      2,
     );
-    drawGrid(
-      'xmas-candle',
-      ['.y.', 'ywy', 'ywy', 'oyo', '.o.'],
-      { w: 0xffffe8, y: 0xffe468, o: 0xff9428 },
-      2,
-    );
+    drawGrid('xmas-candle', ['.y.', 'ywy', 'ywy', 'oyo', '.o.'], { w: 0xffffe8, y: 0xffe468, o: 0xff9428 });
     g.destroy();
 
-    // Smooth radial gradient helper for additive light pools and fairy-light bulbs.
-    const makeRadial = (key: string, size: number, stops: [number, string][]) => {
+    const canvasTex = (key: string, w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => void) => {
       if (this.textures.exists(key)) return;
-      const tex = this.textures.createCanvas(key, size, size);
+      const tex = this.textures.createCanvas(key, w, h);
       if (!tex) return;
-      const ctx = tex.getContext();
-      const half = size / 2;
-      const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
-      for (const [stop, color] of stops) grad.addColorStop(stop, color);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, size, size);
+      draw(tex.getContext());
       tex.refresh();
     };
+
+    const makeRadial = (key: string, size: number, stops: [number, string][]) =>
+      canvasTex(key, size, size, (ctx) => {
+        const half = size / 2;
+        const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+        for (const [stop, color] of stops) grad.addColorStop(stop, color);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+      });
 
     makeRadial('xmas-light', 128, [
       [0, 'rgba(255, 182, 78, 0.78)'],
@@ -439,225 +297,197 @@ export class Christmas2026Scene extends Phaser.Scene {
       [0.45, 'rgba(255, 238, 180, 0.32)'],
       [1, 'rgba(255, 220, 140, 0)'],
     ]);
+
+    canvasTex('xmas-aurora', 256, 128, (ctx) => {
+      for (let i = 0; i < 36; i++) {
+        const t = i / 35;
+        const x = 16 + t * 224;
+        const env = Math.sin(t * Math.PI);
+        const wave = Math.sin(t * Math.PI * 2.5) * 14;
+        const baseY = 92 + wave;
+        const topY = 10 + wave * 0.4;
+        const grad = ctx.createLinearGradient(x, topY, x, baseY + 18);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(0.55, `rgba(255, 255, 255, ${(0.28 * env).toFixed(3)})`);
+        grad.addColorStop(0.84, `rgba(255, 255, 255, ${(0.72 * env).toFixed(3)})`);
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x - 6, topY, 12, baseY + 18 - topY);
+      }
+    });
+
+    // Perspective-matched icy frost along the 3 bay window quads.
+    const s = 0.5;
+    canvasTex('xmas-window-frost', Math.round((OUTSIDE.x1 - OUTSIDE.x0) * s), Math.round((OUTSIDE.y1 - OUTSIDE.y0) * s), (ctx) => {
+      const pt = (px: number, py: number): [number, number] => [(px - OUTSIDE.x0) * s, (py - OUTSIDE.y0) * s];
+      const corner = (cx: number, cy: number, r: number, a: number) => {
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0, `rgba(218, 240, 255, ${a})`);
+        grad.addColorStop(0.45, `rgba(172, 214, 248, ${a * 0.42})`);
+        grad.addColorStop(1, 'rgba(150, 200, 245, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      };
+      const clipQuad = (q: [number, number][], fn: () => void) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(q[0][0], q[0][1]);
+        for (let i = 1; i < q.length; i++) ctx.lineTo(q[i][0], q[i][1]);
+        ctx.closePath();
+        ctx.clip();
+        fn();
+        ctx.restore();
+      };
+
+      clipQuad([pt(378, 64), pt(498, 86), pt(498, 431), pt(378, 442)], () => {
+        corner(...pt(378, 64), 26, 0.24);
+        corner(...pt(378, 442), 26, 0.24);
+      });
+      clipQuad([pt(876, 84), pt(995, 64), pt(995, 442), pt(876, 431)], () => {
+        corner(...pt(995, 64), 26, 0.24);
+        corner(...pt(995, 442), 26, 0.24);
+      });
+      const [ctl, ctr, cbr, cbl] = [pt(537, 91), pt(837, 91), pt(837, 426), pt(537, 426)];
+      clipQuad([ctl, ctr, cbr, cbl], () => {
+        corner(ctl[0], ctl[1], 30, 0.3);
+        corner(ctr[0], ctr[1], 30, 0.3);
+        corner(cbl[0], cbl[1], 34, 0.36);
+        corner(cbr[0], cbr[1], 34, 0.36);
+        const sill = ctx.createLinearGradient(0, cbl[1], 0, cbl[1] - 14);
+        sill.addColorStop(0, 'rgba(214, 238, 255, 0.22)');
+        sill.addColorStop(1, 'rgba(180, 220, 255, 0)');
+        ctx.fillStyle = sill;
+        ctx.fillRect(ctl[0], cbl[1] - 14, ctr[0] - ctl[0], 14);
+        ctx.rotate(-0.36);
+        ctx.fillStyle = 'rgba(225, 242, 255, 0.045)';
+        ctx.fillRect(62, 66, 18, 180);
+        ctx.fillStyle = 'rgba(255, 228, 185, 0.03)';
+        ctx.fillRect(92, 66, 9, 180);
+      });
+    });
+
+    canvasTex('xmas-vignette', 256, 144, (ctx) => {
+      ctx.save();
+      ctx.translate(128, 72);
+      ctx.scale(1, 144 / 256);
+      const grad = ctx.createRadialGradient(0, 0, 256 * 0.26, 0, 0, 256 * 0.62);
+      grad.addColorStop(0, 'rgba(6, 10, 26, 0)');
+      grad.addColorStop(0.65, 'rgba(6, 10, 26, 0.14)');
+      grad.addColorStop(1, 'rgba(6, 10, 26, 0.48)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(-256, -256, 512, 512);
+      ctx.restore();
+    });
   }
 
-  /** Staggered star twinkles, an occasional shooting star, and silver-blue moonlight spilling into the cabin. */
+  /** Northern lights, twinkling stars, silver-blue moonlight pools, and occasional shooting stars. */
   private lightSky(sx: number, sy: number): void {
+    for (const a of [
+      { x: 475, y: 176, w: 330, h: 165, angle: -11, tint: 0x38ffaa, a0: 0.2, a1: 0.42, dx: 22, dy: -10, dur: 7400 },
+      { x: 555, y: 164, w: 290, h: 150, angle: -7, tint: 0x44d8ff, a0: 0.16, a1: 0.36, dx: -18, dy: 8, dur: 8800 },
+      { x: 510, y: 146, w: 270, h: 135, angle: -9, tint: 0xb470ff, a0: 0.12, a1: 0.28, dx: 16, dy: -7, dur: 10200 },
+    ]) {
+      const ribbon = this.glow(a.x, a.y, a.w, a.h, 0.35, a.a0, 'xmas-aurora', a.tint).setAngle(a.angle);
+      this.pulse(ribbon, { x: (a.x + a.dx) * sx, y: (a.y + a.dy) * sy, displayHeight: a.h * 1.14 * sy, alpha: a.a1 }, a.dur);
+    }
+
     SKY_STARS.forEach(([x, y], i) => {
       const star = this.add
         .rectangle(x * sx, y * sy, 2 * sx, 2 * sy, i % 3 === 0 ? 0xd8ecff : 0xfff8dc, 0.25)
         .setDepth(0.5);
-      this.tweens.add({
-        targets: star,
-        alpha: 0.95,
-        scaleX: 1.4,
-        scaleY: 1.4,
-        duration: 1100 + (i % 5) * 340,
-        delay: (i * 270) % 1800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      this.pulse(star, { alpha: 0.95, scaleX: 1.4, scaleY: 1.4 }, 1100 + (i % 5) * 340, (i * 270) % 1800);
     });
 
-    // Soft silver-blue moonlight halo outside + cool beams spilling across the bay windowsill and Ace's bed.
-    const moonPools = [
+    for (const p of [
       { x: 750, y: 148, w: 280, h: 280, depth: 0.4, a0: 0.34, a1: 0.5, dur: 3800 },
       { x: 688, y: 454, w: 580, h: 220, depth: 2.0, a0: 0.26, a1: 0.36, dur: 4200 },
       { x: 688, y: 610, w: 540, h: 270, depth: 3.8, a0: 0.2, a1: 0.28, dur: 4600 },
-    ];
-    for (const p of moonPools) {
-      const pool = this.add
-        .image(p.x * sx, p.y * sy, 'xmas-moonlight')
-        .setDisplaySize(p.w * sx, p.h * sy)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(p.depth)
-        .setAlpha(p.a0);
-      this.tweens.add({
-        targets: pool,
-        alpha: p.a1,
-        duration: p.dur,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+    ]) {
+      this.pulse(this.glow(p.x, p.y, p.w, p.h, p.depth, p.a0, 'xmas-moonlight'), { alpha: p.a1 }, p.dur);
     }
 
-    const shoot = () => {
-      const x0 = Phaser.Math.Between(560, 720);
-      const y0 = Phaser.Math.Between(102, 152);
-      const streak = this.add
-        .rectangle(x0 * sx, y0 * sy, 24 * sx, 2 * sy, 0xeef6ff, 0)
-        .setAngle(22)
-        .setDepth(0.6);
-      this.tweens.add({
-        targets: streak,
-        x: (x0 + 110) * sx,
-        y: (y0 + 44) * sy,
-        alpha: { from: 0.9, to: 0 },
-        duration: 620,
-        ease: 'Quad.easeOut',
-        onComplete: () => streak.destroy(),
-      });
-    };
-    this.time.addEvent({ delay: 28_000, loop: true, callback: shoot });
+    this.time.addEvent({
+      delay: 28_000,
+      loop: true,
+      callback: () => {
+        const x0 = Phaser.Math.Between(560, 720);
+        const y0 = Phaser.Math.Between(102, 152);
+        const streak = this.add.rectangle(x0 * sx, y0 * sy, 24 * sx, 2 * sy, 0xeef6ff, 0).setAngle(22).setDepth(0.6);
+        this.tweens.add({
+          targets: streak,
+          x: (x0 + 110) * sx,
+          y: (y0 + 44) * sy,
+          alpha: { from: 0.9, to: 0 },
+          duration: 620,
+          ease: 'Quad.easeOut',
+          onComplete: () => streak.destroy(),
+        });
+      },
+    });
   }
 
-  /** Flickering flames and warm additive candlelight halos illuminating the mantel and stone chimney. */
   private lightCandles(sx: number, sy: number): void {
     CANDLES.forEach((c, i) => {
-      const outerW = 165 * sx * c.s;
-      const outerH = 165 * sy * c.s;
-      const outerHalo = this.add
-        .image(c.x * sx, (c.y - 8) * sy, 'xmas-light')
-        .setDisplaySize(outerW, outerH)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(2.02)
-        .setAlpha(0.46);
-      this.tweens.add({
-        targets: outerHalo,
-        alpha: 0.72,
-        displayWidth: outerW * 1.12,
-        displayHeight: outerH * 1.12,
-        duration: 460 + i * 130,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      const outer = this.glow(c.x, c.y - 8, 165 * c.s, 165 * c.s, 2.22, 0.46);
+      this.pulse(outer, { alpha: 0.72, displayWidth: 165 * c.s * 1.12 * sx, displayHeight: 165 * c.s * 1.12 * sy }, 460 + i * 130);
 
-      const innerW = 52 * sx * c.s;
-      const innerH = 52 * sy * c.s;
-      const innerHalo = this.add
-        .image(c.x * sx, (c.y - 6) * sy, 'xmas-bulb')
-        .setTint(0xffd478)
-        .setDisplaySize(innerW, innerH)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(2.06)
-        .setAlpha(0.55);
-      this.tweens.add({
-        targets: innerHalo,
-        alpha: 0.85,
-        displayWidth: innerW * 1.16,
-        displayHeight: innerH * 1.16,
-        duration: 240 + i * 80,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      const inner = this.glow(c.x, c.y - 6, 52 * c.s, 52 * c.s, 2.24, 0.55, 'xmas-bulb', 0xffd478);
+      this.pulse(inner, { alpha: 0.85, displayWidth: 52 * c.s * 1.16 * sx, displayHeight: 52 * c.s * 1.16 * sy }, 240 + i * 80);
 
-      const flame = this.add
-        .image(c.x * sx, c.y * sy, 'xmas-candle')
-        .setOrigin(0.5, 1)
-        .setScale(sx * c.s)
-        .setDepth(2.1);
-      this.tweens.add({
-        targets: flame,
-        scaleX: sx * c.s * 0.85,
-        scaleY: sx * c.s * 1.22,
-        angle: i === 0 ? 5 : -5,
-        duration: 180 + i * 55,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      const flame = this.add.image(c.x * sx, c.y * sy, 'xmas-candle').setOrigin(0.5, 1).setScale(sx * c.s).setDepth(2.26);
+      this.pulse(flame, { scaleX: sx * c.s * 0.85, scaleY: sx * c.s * 1.22, angle: i === 0 ? 5 : -5 }, 180 + i * 55);
     });
   }
 
   private spawnSnow(): void {
     for (let i = 0; i < SNOW_COUNT; i++) {
-      const sprite = this.add
-        .image(0, 0, 'xmas-flake')
-        .setDepth(1)
-        .setAlpha(0.85)
-        .setScale(1.2 + (i % 3) * 0.45);
-      this.snow.push({
-        sprite,
-        speed: 14 + (i % 5) * 3,
-        phase: i * 1.7,
-      });
+      const sprite = this.add.image(0, 0, 'xmas-flake').setDepth(1).setAlpha(0.85).setScale(1.2 + (i % 3) * 0.45);
+      this.snow.push({ sprite, speed: 14 + (i % 5) * 3, phase: i * 1.7 });
       this.resetFlake(i, true);
     }
   }
 
   private resetFlake(i: number, settled: boolean): void {
-    const f = this.snow[i];
     const px = OUTSIDE.x0 + Math.random() * (OUTSIDE.x1 - OUTSIDE.x0);
-    const py = settled
-      ? OUTSIDE.y0 + Math.random() * (OUTSIDE.y1 - OUTSIDE.y0)
-      : OUTSIDE.y0 - Math.random() * 12;
-    f.sprite.setPosition(px * this.sx, py * this.sy);
+    const py = settled ? OUTSIDE.y0 + Math.random() * (OUTSIDE.y1 - OUTSIDE.y0) : OUTSIDE.y0 - Math.random() * 12;
+    this.snow[i].sprite.setPosition(px * this.sx, py * this.sy);
   }
 
-  /** Warm tree glow, twinkling pixel-art star topper, and all 81 twinkling fairy lights. */
+  private spawnMotes(sx: number, sy: number): void {
+    const specs: [number, number, number, number][] = [
+      [520, 470, 0xd4ecff, 7], [590, 510, 0xe6f4ff, 6], [640, 458, 0xcce6ff, 8],
+      [695, 535, 0xeaf6ff, 7], [745, 482, 0xd4ecff, 6], [805, 520, 0xcce6ff, 7],
+      [625, 590, 0xe2f2ff, 6], [755, 575, 0xd8eeff, 8], [680, 630, 0xeaf6ff, 6],
+      [265, 410, 0xffe4a0, 7], [335, 495, 0xffd888, 6], [955, 560, 0xffe098, 7],
+      [1030, 515, 0xffd47a, 8], [1095, 590, 0xffe6a8, 6],
+    ];
+    this.motes = specs.map(([x, y, tint, size], i) => ({
+      sprite: this.glow(x, y, size, size, 3.9, 0, 'xmas-bulb', tint),
+      x0: x * sx,
+      y0: y * sy,
+      ampX: (8 + (i % 4) * 4) * sx,
+      ampY: (10 + (i % 3) * 5) * sy,
+      speed: 0.32 + (i % 5) * 0.08,
+      phase: i * 1.37,
+      maxAlpha: 0.24 + (i % 3) * 0.07,
+    }));
+  }
+
+  /** Warm tree glow, twinkling star topper, and all 81 fairy-light bulbs. */
   private lightTree(sx: number, sy: number): void {
-    // Warm ambient glow radiating from the Christmas tree onto the dark wall, presents, and rug.
-    const treeWash = this.add
-      .image(170 * sx, 320 * sy, 'xmas-light')
-      .setDisplaySize(540 * sx, 640 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(1.95)
-      .setAlpha(0.32);
-    this.tweens.add({
-      targets: treeWash,
-      alpha: 0.44,
-      duration: 2400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    this.pulse(this.glow(170, 320, 540, 640, 1.95, 0.32), { alpha: 0.44 }, 2400);
+    this.pulse(this.glow(185, 585, 480, 250, 3.8, 0.28), { alpha: 0.38 }, 2800);
 
-    const presentBounce = this.add
-      .image(185 * sx, 585 * sy, 'xmas-light')
-      .setDisplaySize(480 * sx, 250 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(3.8)
-      .setAlpha(0.28);
-    this.tweens.add({
-      targets: presentBounce,
-      alpha: 0.38,
-      duration: 2800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-
-    // Dynamic twinkling star topper (additive halo + extracted star.png + center sparkle glint).
-    const starHaloW = 148 * sx;
-    const starHaloH = 148 * sy;
-    const starHalo = this.add
-      .image(TREE_STAR.x * sx, TREE_STAR.y * sy, 'xmas-light')
-      .setDisplaySize(starHaloW, starHaloH)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(2.02)
-      .setAlpha(0.45);
-    this.tweens.add({
-      targets: starHalo,
-      alpha: 0.9,
-      displayWidth: starHaloW * 1.18,
-      displayHeight: starHaloH * 1.18,
-      duration: 1350,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    const starHalo = this.glow(TREE_STAR.x, TREE_STAR.y, 148, 148, 2.02, 0.45);
+    this.pulse(starHalo, { alpha: 0.9, displayWidth: 148 * 1.18 * sx, displayHeight: 148 * 1.18 * sy }, 1350);
 
     const starSprite = this.add
-      .image(TREE_STAR.x * sx, TREE_STAR.y * sy, 'xmas-star')
-      .setOrigin(0.5)
+      .image(TREE_STAR.x * sx, TREE_STAR.y * sy, 'star')
       .setScale(sx * 0.96, sy * 0.96)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(2.05)
       .setAlpha(0.35);
-    this.tweens.add({
-      targets: starSprite,
-      alpha: 1,
-      scaleX: sx * 1.06,
-      scaleY: sy * 1.06,
-      duration: 1350,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    this.pulse(starSprite, { alpha: 1, scaleX: sx * 1.06, scaleY: sy * 1.06 }, 1350);
 
     const starGlint = this.add
       .image(TREE_STAR.x * sx, (TREE_STAR.y + 2) * sy, 'xmas-sparkle')
@@ -665,81 +495,37 @@ export class Christmas2026Scene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(2.08)
       .setAlpha(0.12);
-    this.tweens.add({
-      targets: starGlint,
-      alpha: 0.92,
-      scaleX: sx * 1.75,
-      scaleY: sy * 1.75,
-      angle: 45,
-      duration: 980,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    this.pulse(starGlint, { alpha: 0.92, scaleX: sx * 1.75, scaleY: sy * 1.75, angle: 45 }, 980);
 
-    // All 81 tree fairy-light bulbs twinkling independently with warm golden-white additive glows.
     const tints = [0xfff4c2, 0xffe28a, 0xffd26a, 0xfff9dc, 0xffbe60];
     TREE_LIGHTS.forEach(([lx, ly], i) => {
-      const minW = 10 * sx;
       const maxW = (17 + (i % 3) * 2) * sx;
-      const bulb = this.add
-        .image(lx * sx, ly * sy, 'xmas-bulb')
-        .setTint(tints[i % tints.length])
-        .setDisplaySize(minW, minW)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(2.04)
-        .setAlpha(0.08);
-      this.tweens.add({
-        targets: bulb,
-        alpha: 0.96,
-        displayWidth: maxW,
-        displayHeight: maxW,
-        duration: 620 + (i % 7) * 160,
-        delay: (i * 173) % 1450,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      const bulb = this.glow(lx, ly, 10, 10, 2.04, 0.08, 'xmas-bulb', tints[i % tints.length]);
+      this.pulse(bulb, { alpha: 0.96, displayWidth: maxW, displayHeight: maxW }, 620 + (i % 7) * 160, (i * 173) % 1450);
     });
   }
 
-  /** Animated fireplace using layered pixel-art flame sprites (fire.png) extracted from the scene palette. */
+  /** Animated fireplace using layered pixel-art fire.png masked behind hearth-frame.png. */
   private lightHearth(sx: number, sy: number): void {
-    // Cover the static painted flame tips with clean firebox bricks so the animated fire.png layers own the motion.
-    const brick = { x: 1158, y: 396, w: 46, h: 86 };
-    for (const [dx, dy] of [
-      [1204, 396],
-      [1250, 396],
-      [1204, 444],
-      [1250, 444],
-    ]) {
-      this.add
-        .image((dx - brick.x) * sx, (dy - brick.y) * sy, 'cabin-interior')
-        .setOrigin(0, 0)
-        .setDisplaySize(PLATE_W, PLATE_H)
-        .setDepth(1.85)
-        .setCrop(brick.x, brick.y, brick.w, brick.h);
-    }
-
-    // Dynamic additive firelight spilling softly onto the hearth, stockings, floorboards, and Ace's bed.
-    const hearthLight = this.add
-      .image(1140 * sx, 600 * sy, 'xmas-light')
-      .setDisplaySize(660 * sx, 420 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(3.8)
-      .setAlpha(0.46);
-    const floorLight = this.add
-      .image(910 * sx, 668 * sy, 'xmas-light')
-      .setDisplaySize(800 * sx, 350 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(3.8)
-      .setAlpha(0.34);
-    const mantelLight = this.add
-      .image(1185 * sx, 395 * sy, 'xmas-light')
-      .setDisplaySize(400 * sx, 340 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(2.2)
-      .setAlpha(0.28);
+    const flickers: {
+      sprite: Phaser.GameObjects.Image;
+      base: number;
+      span: number;
+      w?: number;
+      h?: number;
+      driftX?: number;
+    }[] = [
+      { sprite: this.glow(1230, 474, 270, 280, 1.95, 0.88, 'xmas-light', 0xff9428), base: 0.72, span: 0.28, w: 270, h: 280 },
+      { sprite: this.glow(1140, 600, 660, 420, 3.8, 0.46), base: 0.34, span: 0.22, w: 660, h: 420 },
+      { sprite: this.glow(910, 668, 800, 350, 3.8, 0.34), base: 0.22, span: 0.2, w: 800, h: 350, driftX: 910 },
+      { sprite: this.glow(1185, 395, 400, 340, 2.2, 0.28), base: 0.18, span: 0.16 },
+      { sprite: this.glow(1244, 546, 164, 74, 1.98, 0.92, 'xmas-light', 0xff7218).setAngle(24), base: 0.76, span: 0.24 },
+      { sprite: this.glow(1246, 540, 136, 52, 1.99, 0.82, 'xmas-light', 0xffc648).setAngle(22), base: 0.64, span: 0.28 },
+    ];
+    const coalSpots = [
+      [1206, 526, 26, 0xff8224], [1224, 536, 30, 0xffae38], [1242, 544, 34, 0xffce54],
+      [1260, 552, 32, 0xffa430], [1276, 560, 28, 0xff7c22], [1248, 556, 28, 0xff6a1a],
+    ].map(([x, y, s, tint]) => this.glow(x, y, s, s * 0.65, 2.0, 0.82, 'xmas-bulb', tint).setAngle(24));
 
     this.time.addEvent({
       delay: 380,
@@ -747,80 +533,71 @@ export class Christmas2026Scene extends Phaser.Scene {
       callback: () => {
         const intensity = Phaser.Math.FloatBetween(0.4, 1.0);
         const reach = 0.97 + intensity * 0.06;
-        this.tweens.add({
-          targets: hearthLight,
-          alpha: 0.34 + intensity * 0.22,
-          displayWidth: 660 * sx * reach,
-          displayHeight: 420 * sy * reach,
-          duration: 360,
-          ease: 'Sine.easeInOut',
-        });
-        this.tweens.add({
-          targets: floorLight,
-          alpha: 0.22 + intensity * 0.2,
-          x: (910 - intensity * 8) * sx,
-          displayWidth: 800 * sx * reach,
-          displayHeight: 350 * sy * reach,
-          duration: 360,
-          ease: 'Sine.easeInOut',
-        });
-        this.tweens.add({
-          targets: mantelLight,
-          alpha: 0.18 + intensity * 0.16,
-          duration: 360,
-          ease: 'Sine.easeInOut',
-        });
+        const lv = this.fireLevel;
+        for (const f of flickers) {
+          const props: Record<string, number> = { alpha: (f.base + intensity * f.span) * lv };
+          if (f.w && f.h) {
+            props.displayWidth = f.w * sx * reach;
+            props.displayHeight = f.h * sy * reach;
+          }
+          if (f.driftX !== undefined) props.x = (f.driftX - intensity * 8) * sx;
+          this.tweens.add({ targets: f.sprite, ...props, duration: 360, ease: 'Sine.easeInOut' });
+        }
+        for (const spot of coalSpots) {
+          this.tweens.add({
+            targets: spot,
+            alpha: Phaser.Math.FloatBetween(0.6, 0.98) * lv,
+            duration: 360,
+            ease: 'Sine.easeInOut',
+          });
+        }
       },
     });
 
-    const fireLayers = [
-      { x: 1249, y: 536, sx0: 1.02, sy0: 0.94, sy1: 1.06, flip: false, angle: 2, dur: 420, tints: [0xff9c42, 0xffb452] },
-      { x: 1246, y: 538, sx0: 0.95, sy0: 0.88, sy1: 1.08, flip: true, angle: -2.5, dur: 340, tints: [0xffcf6e, 0xffa642] },
-      { x: 1251, y: 536, sx0: 0.88, sy0: 0.84, sy1: 1.02, flip: false, angle: 1.5, dur: 290, tints: [0xfff2c2, 0xffe498] },
-    ];
-    fireLayers.forEach((cfg, i) => {
+    // Cohesive 3-layer pixel-art hearth flame anchored on the logs (clipped behind hearth-frame at 2.15).
+    const fireGroup = this.add.container(1248 * sx, 566 * sy).setDepth(2.03);
+    for (const c of [
+      { dx: -8, dy: -4, sx0: 1.08, sy0: 0.94, sy1: 1.06, flip: false, a0: -2.5, a1: 2, dur: 460, alpha: 0.86, tint: 0xff9838, add: false },
+      { dx: 0, dy: 0, sx0: 1.0, sy0: 1.0, sy1: 1.12, flip: false, a0: -1.8, a1: 2.2, dur: 330, alpha: 0.96, tint: 0xffffff, add: false },
+      { dx: 4, dy: 2, sx0: 0.74, sy0: 0.78, sy1: 0.92, flip: true, a0: 2, a1: -2.4, dur: 245, alpha: 0.54, tint: 0xfff0b8, add: true },
+    ]) {
       const f = this.add
-        .image(cfg.x * sx, cfg.y * sy, 'xmas-fire')
+        .image(c.dx * sx, c.dy * sy, 'fire')
         .setOrigin(0.5, 1)
-        .setFlipX(cfg.flip)
-        .setScale(sx * cfg.sx0, sy * cfg.sy0)
-        .setAlpha(0.88)
-        .setDepth(2 + i * 0.05);
+        .setFlipX(c.flip)
+        .setScale(sx * c.sx0, sy * c.sy0)
+        .setTint(c.tint)
+        .setAlpha(c.alpha)
+        .setAngle(c.a0);
+      if (c.add) f.setBlendMode(Phaser.BlendModes.ADD);
+      fireGroup.add(f);
+      this.pulse(f, { scaleX: sx * c.sx0 * 0.96, scaleY: sy * c.sy1, angle: c.a1 }, c.dur);
+    }
+
+    this.setFire = (level, dur) => {
+      this.tweens.killTweensOf(fireGroup);
+      this.tweens.add({ targets: this, fireLevel: level, duration: dur, ease: 'Sine.easeInOut' });
       this.tweens.add({
-        targets: f,
-        scaleX: sx * cfg.sx0 * 0.95,
-        scaleY: sy * cfg.sy1,
-        angle: cfg.angle,
-        duration: cfg.dur,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
+        targets: fireGroup,
+        alpha: level,
+        scaleY: 0.15 + 0.85 * level,
+        duration: dur,
+        ease: level > 0.5 ? 'Back.easeOut' : 'Sine.easeInOut',
       });
-      this.time.addEvent({
-        delay: 320 + i * 75,
-        loop: true,
-        callback: () => f.setTint(Phaser.Math.RND.pick(cfg.tints)),
-      });
-    });
+    };
 
     this.time.addEvent({
       delay: 1100,
       loop: true,
       callback: () => {
+        if (this.fireLevel < 0.3) return;
         const ember = this.add
-          .rectangle(
-            Phaser.Math.Between(1218, 1282) * sx,
-            515 * sy,
-            2.5 * sx,
-            2.5 * sy,
-            0xffd460,
-            0.65,
-          )
-          .setDepth(2.15);
+          .rectangle(Phaser.Math.Between(1204, 1276) * sx, 490 * sy, 3 * sx, 3 * sy, 0xffe078, 0.78)
+          .setDepth(2.1);
         this.tweens.add({
           targets: ember,
           x: ember.x + Phaser.Math.Between(-10, 10) * sx,
-          y: ember.y - Phaser.Math.Between(38, 72) * sy,
+          y: ember.y - Phaser.Math.Between(42, 78) * sy,
           alpha: 0,
           duration: Phaser.Math.Between(1200, 1900),
           ease: 'Sine.easeOut',
@@ -831,24 +608,14 @@ export class Christmas2026Scene extends Phaser.Scene {
   }
 
   private spawnElves(sx: number, sy: number): void {
-    this.elves = [];
-    const scale = sx * ELF_SCALE;
-    ELVES_CFG.forEach((cfg) => {
-      const sprite = this.add
-        .image(cfg.hide.x * sx, cfg.hide.y * sy, cfg.key)
-        .setOrigin(0.5, 1)
-        .setDepth(3.0)
-        .setScale(scale);
-      const elf: Elf = {
-        sprite,
-        points: cfg.points,
-        hide: cfg.hide,
-        rim: cfg.rim,
-        step: cfg.points.length - 1,
-        mood: 'hide',
-      };
-      this.elves.push(elf);
-    });
+    this.elves = ELVES_CFG.map((cfg) => ({
+      sprite: this.add.image(cfg.hide[0] * sx, cfg.hide[1] * sy, cfg.key).setOrigin(0.5, 1).setDepth(3.0).setScale(sx * ELF_SCALE),
+      points: cfg.points,
+      hide: cfg.hide,
+      rim: cfg.rim,
+      step: cfg.points.length - 1,
+      mood: 'hide',
+    }));
     this.nextElf();
     this.time.addEvent({ delay: ELF_GAP, loop: true, callback: () => this.nextElf() });
   }
@@ -859,9 +626,7 @@ export class Christmas2026Scene extends Phaser.Scene {
   }
 
   private freeElves(): void {
-    if (this.elfHolds === 0) return;
-    this.elfHolds--;
-    if (this.elfHolds === 0 && this.elfDue) this.nextElf();
+    if (this.elfHolds > 0 && --this.elfHolds === 0 && this.elfDue) this.nextElf();
   }
 
   private nextElf(): void {
@@ -873,126 +638,76 @@ export class Christmas2026Scene extends Phaser.Scene {
     this.creepElf(this.elves[this.elfTurn++ % this.elves.length]);
   }
 
+  private hopBehind(elf: Elf, upDur: number, downDur: number, onComplete?: () => void): void {
+    this.tweens.add({
+      targets: elf.sprite,
+      x: elf.hide[0] * this.sx,
+      y: (elf.rim + 18) * this.sy,
+      duration: upDur,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        elf.sprite.setDepth(3.0);
+        this.tweens.add({
+          targets: elf.sprite,
+          y: elf.hide[1] * this.sy,
+          duration: downDur,
+          ease: 'Quad.easeIn',
+          onComplete,
+        });
+      },
+    });
+  }
+
   private tuckElf(elf: Elf): void {
     if (elf.mood === 'hide') return;
     elf.mood = 'hide';
     elf.wait?.remove(false);
     elf.wait = undefined;
     this.tweens.killTweensOf(elf.sprite);
-    const scale = this.sx * ELF_SCALE;
-    elf.sprite.setScale(scale).setAngle(0);
-    if (elf.sprite.depth > 3.1) {
-      const crestY = (elf.rim + 18) * this.sy;
-      this.tweens.add({
-        targets: elf.sprite,
-        x: elf.hide.x * this.sx,
-        y: crestY,
-        duration: 220,
-        ease: 'Quad.easeOut',
-        onComplete: () => {
-          elf.sprite.setDepth(3.0);
-          this.tweens.add({
-            targets: elf.sprite,
-            y: elf.hide.y * this.sy,
-            duration: 160,
-            ease: 'Quad.easeIn',
-          });
-        },
-      });
-    } else {
+    elf.sprite.setScale(this.sx * ELF_SCALE).setAngle(0);
+    if (elf.sprite.depth > 3.1) this.hopBehind(elf, 220, 160);
+    else {
       elf.sprite.setDepth(3.0);
-      this.tweens.add({
-        targets: elf.sprite,
-        x: elf.hide.x * this.sx,
-        y: elf.hide.y * this.sy,
-        duration: 240,
-        ease: 'Quad.easeIn',
-      });
+      this.tweens.add({ targets: elf.sprite, x: elf.hide[0] * this.sx, y: elf.hide[1] * this.sy, duration: 240, ease: 'Quad.easeIn' });
     }
   }
 
-  /** Elf checks on sleeping Ace, glances at the tree/cookies for Santa, and gives a cheerful nod with a magic sparkle. */
   private waitElf(elf: Elf): void {
     elf.mood = 'open';
     const { sx, sy } = this;
     const baseY = elf.sprite.y;
-    const lookRightAtAce = elf.sprite.x < BED.x * sx;
-
-    // 1. Turn to look over at sleeping Ace with a curious head tilt.
-    elf.sprite.setFlipX(!lookRightAtAce).setAngle(0);
+    const lookRight = elf.sprite.x < BED.x * sx;
+    elf.sprite.setFlipX(!lookRight).setAngle(0);
     this.tweens.add({
       targets: elf.sprite,
-      angle: lookRightAtAce ? 4 : -4,
+      angle: lookRight ? 4 : -4,
       duration: 450,
       yoyo: true,
       hold: 450,
       ease: 'Sine.easeInOut',
       onComplete: () => {
         if (elf.mood !== 'open') return;
-        // 2. Glance back at the presents / cookies to inspect them for Santa.
-        elf.sprite.setFlipX(lookRightAtAce);
+        elf.sprite.setFlipX(lookRight);
         this.time.delayedCall(750, () => {
           if (elf.mood !== 'open') return;
-          // 3. Look back at Ace and do a happy double-nod with a golden Christmas magic sparkle.
-          elf.sprite.setFlipX(!lookRightAtAce);
+          elf.sprite.setFlipX(!lookRight);
           const star = this.add
             .image(elf.sprite.x, baseY - 68 * sy, 'xmas-sparkle')
             .setScale(sx * 0.65)
             .setAlpha(0.95)
             .setDepth(elf.sprite.depth + 0.05);
-          this.tweens.add({
-            targets: star,
-            y: star.y - 20 * sy,
-            angle: 45,
-            alpha: 0,
-            duration: 900,
-            ease: 'Sine.easeOut',
-            onComplete: () => star.destroy(),
-          });
-          this.tweens.add({
-            targets: elf.sprite,
-            y: baseY - 6 * sy,
-            duration: 150,
-            yoyo: true,
-            repeat: 1,
-            ease: 'Quad.easeOut',
-          });
+          this.tweens.add({ targets: star, y: star.y - 20 * sy, angle: 45, alpha: 0, duration: 900, ease: 'Sine.easeOut', onComplete: () => star.destroy() });
+          this.tweens.add({ targets: elf.sprite, y: baseY - 6 * sy, duration: 150, yoyo: true, repeat: 1, ease: 'Quad.easeOut' });
         });
       },
     });
-
     elf.wait = this.time.delayedCall(Phaser.Math.Between(3400, 4600), () => {
       elf.wait = undefined;
-      this.boltElf(elf);
-    });
-  }
-
-  private boltElf(elf: Elf): void {
-    if (elf.mood !== 'open') return;
-    elf.mood = 'bolt';
-    elf.wait?.remove(false);
-    elf.wait = undefined;
-    this.tweens.killTweensOf(elf.sprite);
-    const scale = this.sx * ELF_SCALE;
-    elf.sprite.setScale(scale);
-    const crestY = (elf.rim + 18) * this.sy;
-    // Jump up to the top rim of the present/log in front (depth 3.55), then drop behind it (depth 3.0).
-    this.tweens.add({
-      targets: elf.sprite,
-      x: elf.hide.x * this.sx,
-      y: crestY,
-      duration: 280,
-      ease: 'Quad.easeOut',
-      onComplete: () => {
-        elf.sprite.setDepth(3.0);
-        this.tweens.add({
-          targets: elf.sprite,
-          y: elf.hide.y * this.sy,
-          duration: 180,
-          ease: 'Quad.easeIn',
-          onComplete: () => this.hideElf(elf),
-        });
-      },
+      if (elf.mood !== 'open') return;
+      elf.mood = 'bolt';
+      this.tweens.killTweensOf(elf.sprite);
+      elf.sprite.setScale(sx * ELF_SCALE);
+      this.hopBehind(elf, 280, 180, () => this.hideElf(elf));
     });
   }
 
@@ -1002,53 +717,33 @@ export class Christmas2026Scene extends Phaser.Scene {
     if (this.elfHolds > 0) return;
     this.time.delayedCall(Phaser.Math.Between(1400, 2400), () => {
       if (this.elfHolds > 0 || elf.mood !== 'hide') return;
-      this.peekElf(elf);
-    });
-  }
-
-  private peekElf(elf: Elf): void {
-    elf.mood = 'peek';
-    elf.sprite.setDepth(3.0).setAngle(0);
-    // Face toward Ace while peeking over the present/logs.
-    elf.sprite.setFlipX(elf.hide.x > BED.x);
-    const y = (elf.rim + ELF_SRC_H - PEEK) * this.sy;
-    this.tweens.add({
-      targets: elf.sprite,
-      x: elf.hide.x * this.sx,
-      y,
-      duration: Phaser.Math.Between(280, 420),
-      ease: 'Sine.easeOut',
-      onComplete: () => {
-        if (this.elfHolds > 0) {
-          this.tuckElf(elf);
-          return;
-        }
-        this.time.delayedCall(Phaser.Math.Between(850, 1250), () => {
-          if (this.elfHolds > 0) {
-            this.tuckElf(elf);
-            return;
-          }
-          this.yankElf(elf);
-        });
-      },
-    });
-  }
-
-  private yankElf(elf: Elf): void {
-    elf.mood = 'hide';
-    this.tweens.add({
-      targets: elf.sprite,
-      x: elf.hide.x * this.sx,
-      y: elf.hide.y * this.sy,
-      duration: Phaser.Math.Between(140, 200),
-      ease: 'Quad.easeIn',
-      onComplete: () => {
-        if (elf.step === elf.points.length - 1 || this.elfHolds > 0) return;
-        this.time.delayedCall(Phaser.Math.Between(400, 800), () => {
-          if (this.elfHolds > 0) return;
-          this.creepElf(elf);
-        });
-      },
+      elf.mood = 'peek';
+      elf.sprite.setDepth(3.0).setAngle(0).setFlipX(elf.hide[0] > BED.x);
+      this.tweens.add({
+        targets: elf.sprite,
+        x: elf.hide[0] * this.sx,
+        y: (elf.rim + ELF_SRC_H - PEEK) * this.sy,
+        duration: Phaser.Math.Between(280, 420),
+        ease: 'Sine.easeOut',
+        onComplete: () => {
+          if (this.elfHolds > 0) return this.tuckElf(elf);
+          this.time.delayedCall(Phaser.Math.Between(850, 1250), () => {
+            if (this.elfHolds > 0) return this.tuckElf(elf);
+            elf.mood = 'hide';
+            this.tweens.add({
+              targets: elf.sprite,
+              x: elf.hide[0] * this.sx,
+              y: elf.hide[1] * this.sy,
+              duration: Phaser.Math.Between(140, 200),
+              ease: 'Quad.easeIn',
+              onComplete: () => {
+                if (elf.step === elf.points.length - 1 || this.elfHolds > 0) return;
+                this.time.delayedCall(Phaser.Math.Between(400, 800), () => this.creepElf(elf));
+              },
+            });
+          });
+        },
+      });
     });
   }
 
@@ -1056,29 +751,25 @@ export class Christmas2026Scene extends Phaser.Scene {
     if (this.elfHolds > 0) return;
     elf.mood = 'creep';
     elf.step = (elf.step + 1) % elf.points.length;
-    const next = elf.points[elf.step];
-    const scale = this.sx * ELF_SCALE;
-    elf.sprite.setScale(scale).setAngle(0).setFlipX(next.x * this.sx < elf.sprite.x);
-
-    // Always pop up behind the present/log (depth 3.0), then hop over the top rim onto the front rug (depth 3.55).
-    elf.sprite.setDepth(3.0).setPosition(elf.hide.x * this.sx, elf.hide.y * this.sy);
-    const crestY = (elf.rim + 18) * this.sy;
+    const [nx, ny] = elf.points[elf.step];
+    elf.sprite
+      .setScale(this.sx * ELF_SCALE)
+      .setAngle(0)
+      .setFlipX(nx * this.sx < elf.sprite.x)
+      .setDepth(3.0)
+      .setPosition(elf.hide[0] * this.sx, elf.hide[1] * this.sy);
     this.tweens.add({
       targets: elf.sprite,
-      x: elf.hide.x * this.sx,
-      y: crestY,
+      y: (elf.rim + 18) * this.sy,
       duration: 200,
       ease: 'Quad.easeOut',
       onComplete: () => {
-        if (this.elfHolds > 0) {
-          this.tuckElf(elf);
-          return;
-        }
+        if (this.elfHolds > 0) return this.tuckElf(elf);
         elf.sprite.setDepth(3.55);
         this.tweens.add({
           targets: elf.sprite,
-          x: next.x * this.sx,
-          y: next.y * this.sy,
+          x: nx * this.sx,
+          y: ny * this.sy,
           duration: 380,
           ease: 'Quad.easeIn',
           onComplete: () => this.waitElf(elf),
@@ -1087,214 +778,118 @@ export class Christmas2026Scene extends Phaser.Scene {
     });
   }
 
-  /** Beat 1: Distant Santa sleigh with 6-frame staggered galloping reindeer crossing the moon. */
+  /** Beat 1: Distant Santa sleigh with 6-frame galloping reindeer crossing the moon. */
   private setupSleigh(sx: number, sy: number): void {
-    const sprite = this.add
-      .image(SLEIGH.x0 * sx, SLEIGH.y0 * sy, 'xmas-sleigh-0')
-      .setOrigin(0.5)
-      .setScale(sx * SLEIGH.scale)
-      .setDepth(1.2)
-      .setVisible(false);
+    const sprite = this.add.image(SLEIGH.x0 * sx, SLEIGH.y0 * sy, 'sleigh-0').setScale(sx * SLEIGH.scale).setDepth(1.2).setVisible(false);
+    let gallop: Phaser.Time.TimerEvent | undefined;
+    let sparkles: Phaser.Time.TimerEvent | undefined;
 
-    let gallopTimer: Phaser.Time.TimerEvent | undefined;
-    let frame = 0;
-
-    this.runSleigh = () => {
+    this.runners.sleigh = () => {
       this.tweens.killTweensOf(sprite);
-      gallopTimer?.remove(false);
-      frame = 0;
+      gallop?.remove(false);
+      sparkles?.remove(false);
+      let frame = 0;
+      sprite.setVisible(true).setTexture('sleigh-0').setAlpha(0.92).setPosition(SLEIGH.x0 * sx, SLEIGH.y0 * sy).setAngle(-2);
 
-      sprite
-        .setVisible(true)
-        .setTexture('xmas-sleigh-0')
-        .setAlpha(0.92)
-        .setPosition(SLEIGH.x0 * sx, SLEIGH.y0 * sy)
-        .setAngle(-2);
-
-      gallopTimer = this.time.addEvent({
+      gallop = this.time.addEvent({
         delay: 90,
         loop: true,
+        callback: () => sprite.setTexture(`sleigh-${(frame = (frame + 1) % 6)}`),
+      });
+      const dustTints = [0xffe878, 0xfff6cc, 0xd8f0ff];
+      sparkles = this.time.addEvent({
+        delay: 150,
+        loop: true,
         callback: () => {
-          frame = (frame + 1) % 6;
-          sprite.setTexture(`xmas-sleigh-${frame}`);
+          if (!sprite.visible) return;
+          const mote = this.add
+            .image(sprite.x - Phaser.Math.Between(35, 42) * sx, sprite.y + Phaser.Math.Between(2, 8) * sy, 'xmas-sparkle')
+            .setTint(Phaser.Math.RND.pick(dustTints))
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setScale(sx * Phaser.Math.FloatBetween(0.14, 0.25))
+            .setAlpha(Phaser.Math.FloatBetween(0.32, 0.52))
+            .setDepth(1.15);
+          this.tweens.add({
+            targets: mote,
+            x: mote.x - Phaser.Math.Between(12, 26) * sx,
+            y: mote.y + Phaser.Math.Between(5, 14) * sy,
+            angle: Phaser.Math.Between(-45, 45),
+            scale: sx * 0.08,
+            alpha: 0,
+            duration: Phaser.Math.Between(850, 1300),
+            ease: 'Sine.easeOut',
+            onComplete: () => mote.destroy(),
+          });
         },
       });
-
+      this.pulse(sprite, { angle: 2 }, 900);
       this.tweens.add({
         targets: sprite,
         x: SLEIGH.x1 * sx,
         y: SLEIGH.y1 * sy,
-        duration: SLEIGH_MS,
-        ease: 'Linear',
+        duration: SLEIGH.ms,
         onComplete: () => {
-          gallopTimer?.remove(false);
-          gallopTimer = undefined;
+          gallop?.remove(false);
+          sparkles?.remove(false);
           this.tweens.killTweensOf(sprite);
           sprite.setVisible(false);
         },
       });
-      this.tweens.add({
-        targets: sprite,
-        angle: 2,
-        duration: 900,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
     };
   }
 
-  /** Beat 2: Full-body Rudolph walks in from the right treeline up to the center window. */
-  private setupRudolph(sx: number, sy: number): void {
-    const body = this.add
-      .image(RUDOLPH.x0 * sx, RUDOLPH.y * sy, 'xmas-rudolph')
-      .setOrigin(0.5, 1)
-      .setScale(sx * RUDOLPH.scale)
-      .setDepth(1.5)
-      .setVisible(false);
+  /** Shared walk-in -> hold -> walk-out visitor outside the bay window (Rudolph & Grinch). */
+  private setupWindowVisitor(cfg: {
+    who: 'rudolph' | 'grinch';
+    key: string;
+    x0: number;
+    x1: number;
+    y: number;
+    scale: number;
+    walk: number;
+    hold: number;
+    bobY: number;
+    bobAng: number;
+    bobDur: number;
+    flipIn: boolean;
+    onStart?: () => void;
+    onArrive?: (body: Phaser.GameObjects.Image) => void;
+    onLeave?: () => void;
+    onDone?: () => void;
+  }): void {
+    const { sx, sy } = this;
+    const body = this.add.image(cfg.x0 * sx, cfg.y * sy, cfg.key).setOrigin(0.5, 1).setScale(sx * cfg.scale).setDepth(1.5).setVisible(false);
+    let holdTimer: Phaser.Time.TimerEvent | undefined;
 
-    const noseGlow = this.add
-      .ellipse((RUDOLPH.x1 - 45) * sx, (RUDOLPH.y - 102) * sy, 20 * sx, 20 * sy, 0xff2a2a, 0)
-      .setDepth(1.6)
-      .setVisible(false);
-
-    this.runRudolph = () => {
+    this.runners[cfg.who] = () => {
+      holdTimer?.remove(false);
+      cfg.onStart?.();
       this.tweens.killTweensOf(body);
-      this.tweens.killTweensOf(noseGlow);
-      noseGlow.setVisible(false).setAlpha(0);
-
-      body
-        .setVisible(true)
-        .setFlipX(false)
-        .setAngle(-1.5)
-        .setPosition(RUDOLPH.x0 * sx, RUDOLPH.y * sy);
-
-      // Walking bob while trotting up to the window.
-      const stepBob = this.tweens.add({
-        targets: body,
-        y: (RUDOLPH.y - 5) * sy,
-        angle: 1.5,
-        duration: 240,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-
+      body.setVisible(true).setFlipX(cfg.flipIn).setAngle(-cfg.bobAng).setPosition(cfg.x0 * sx, cfg.y * sy);
+      const bob = this.pulse(body, { y: (cfg.y - cfg.bobY) * sy, angle: cfg.bobAng }, cfg.bobDur);
       this.tweens.add({
         targets: body,
-        x: RUDOLPH.x1 * sx,
-        duration: RUDOLPH_WALK,
+        x: cfg.x1 * sx,
+        duration: cfg.walk,
         ease: 'Sine.easeOut',
         onComplete: () => {
-          stepBob.stop();
-          body.setY(RUDOLPH.y * sy).setAngle(0);
-          noseGlow.setVisible(true).setAlpha(0.5);
-          this.tweens.add({
-            targets: noseGlow,
-            alpha: 0.9,
-            scaleX: 1.3,
-            scaleY: 1.3,
-            duration: 520,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut',
-          });
-
-          this.time.delayedCall(RUDOLPH_HOLD, () => {
-            this.tweens.killTweensOf(noseGlow);
-            noseGlow.setVisible(false);
-            body.setFlipX(true);
-            this.tweens.add({
-              targets: body,
-              y: (RUDOLPH.y - 5) * sy,
-              angle: -1.5,
-              duration: 240,
-              yoyo: true,
-              repeat: -1,
-              ease: 'Sine.easeInOut',
-            });
-            this.tweens.add({
-              targets: body,
-              x: RUDOLPH.x0 * sx,
-              duration: RUDOLPH_WALK,
-              ease: 'Sine.easeIn',
-              onComplete: () => {
-                this.tweens.killTweensOf(body);
-                body.setVisible(false);
-              },
-            });
-          });
-        },
-      });
-    };
-  }
-
-  /** Beat 3: Full-body Grinch tiptoes up outside the window, scattering the elves. */
-  private setupGrinch(sx: number, sy: number): void {
-    const body = this.add
-      .image(GRINCH.x0 * sx, GRINCH.y * sy, 'xmas-grinch')
-      .setOrigin(0.5, 1)
-      .setScale(sx * GRINCH.scale)
-      .setDepth(1.5)
-      .setVisible(false);
-
-    this.runGrinch = () => {
-      this.quietElves();
-      this.tweens.killTweensOf(body);
-      body
-        .setVisible(true)
-        .setFlipX(true)
-        .setAngle(-3)
-        .setPosition(GRINCH.x0 * sx, GRINCH.y * sy);
-
-      const tiptoe = this.tweens.add({
-        targets: body,
-        y: (GRINCH.y - 6) * sy,
-        angle: 3,
-        duration: 280,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-
-      this.tweens.add({
-        targets: body,
-        x: GRINCH.x1 * sx,
-        duration: GRINCH_WALK,
-        ease: 'Sine.easeOut',
-        onComplete: () => {
-          tiptoe.stop();
-          body.setY(GRINCH.y * sy).setAngle(0);
-          this.tweens.add({
-            targets: body,
-            angle: 4,
-            duration: 900,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut',
-          });
-
-          this.time.delayedCall(GRINCH_HOLD, () => {
+          bob.stop();
+          body.setY(cfg.y * sy).setAngle(0);
+          cfg.onArrive?.(body);
+          holdTimer = this.time.delayedCall(cfg.hold, () => {
+            cfg.onLeave?.();
             this.tweens.killTweensOf(body);
-            body.setFlipX(false);
+            body.setFlipX(!cfg.flipIn).setAngle(cfg.bobAng);
+            this.pulse(body, { y: (cfg.y - cfg.bobY) * sy, angle: -cfg.bobAng }, cfg.bobDur);
             this.tweens.add({
               targets: body,
-              y: (GRINCH.y - 6) * sy,
-              angle: -3,
-              duration: 280,
-              yoyo: true,
-              repeat: -1,
-              ease: 'Sine.easeInOut',
-            });
-            this.tweens.add({
-              targets: body,
-              x: GRINCH.x0 * sx,
-              duration: GRINCH_WALK,
+              x: cfg.x0 * sx,
+              duration: cfg.walk,
               ease: 'Sine.easeIn',
               onComplete: () => {
                 this.tweens.killTweensOf(body);
                 body.setVisible(false);
-                this.freeElves();
+                cfg.onDone?.();
               },
             });
           });
@@ -1303,101 +898,111 @@ export class Christmas2026Scene extends Phaser.Scene {
     };
   }
 
-  /** Beat 4: 3-car miniature steam train (Locomotive + Gift Car + Caboose) loops around Ace's bed on the track. */
+  private setupRudolph(sx: number, sy: number): void {
+    const nx = 713;
+    const ny = 386;
+    const noseHalo = this.glow(nx, ny, 108, 108, 1.6, 0, 'xmas-light', 0xff2828).setVisible(false);
+    const noseCore = this.glow(nx, ny, 28, 28, 1.62, 0, 'xmas-bulb', 0xff4242).setVisible(false);
+    const noseSpill = this.glow(740, 452, 340, 150, 2.02, 0, 'xmas-light', 0xff3030).setVisible(false);
+    const lights = [noseHalo, noseCore, noseSpill];
+
+    this.setupWindowVisitor({
+      who: 'rudolph',
+      key: 'rudolph',
+      x0: 1060,
+      x1: 758,
+      y: 488,
+      scale: 0.72,
+      walk: 2600,
+      hold: 4500,
+      bobY: 5,
+      bobAng: 1.5,
+      bobDur: 240,
+      flipIn: false,
+      onStart: () => lights.forEach((l) => (this.tweens.killTweensOf(l), l.setVisible(false).setAlpha(0))),
+      onArrive: () => {
+        noseHalo.setVisible(true).setDisplaySize(108 * sx, 108 * sy).setAlpha(0.45);
+        noseCore.setVisible(true).setDisplaySize(28 * sx, 28 * sy).setAlpha(0.75);
+        noseSpill.setVisible(true).setAlpha(0.14);
+        this.pulse(noseHalo, { alpha: 0.78, displayWidth: 126 * sx, displayHeight: 126 * sy }, 520);
+        this.pulse(noseCore, { alpha: 1, displayWidth: 34 * sx, displayHeight: 34 * sy }, 520);
+        this.pulse(noseSpill, { alpha: 0.28 }, 520);
+      },
+      onLeave: () =>
+        lights.forEach((l) => {
+          this.tweens.killTweensOf(l);
+          this.tweens.add({ targets: l, alpha: 0, duration: 260, onComplete: () => l.setVisible(false) });
+        }),
+    });
+  }
+
+  private setupGrinch(_sx: number, _sy: number): void {
+    this.setupWindowVisitor({
+      who: 'grinch',
+      key: 'grinch',
+      x0: 310,
+      x1: 604,
+      y: 482,
+      scale: 0.72,
+      walk: 2400,
+      hold: 4200,
+      bobY: 6,
+      bobAng: 3,
+      bobDur: 280,
+      flipIn: true,
+      onStart: () => this.quietElves(),
+      onArrive: (body) => this.pulse(body, { angle: 4 }, 900),
+      onDone: () => this.freeElves(),
+    });
+  }
+
+  /** Beat 4: 3-car miniature steam train loops around Ace's bed on track.png. */
   private setupTrain(sx: number, sy: number): void {
-    const carDefs = [
-      { side: 'xmas-train', up: 'xmas-train-up', down: 'xmas-train-down' },
-      { side: 'xmas-car1', up: 'xmas-car1-up', down: 'xmas-car1-down' },
-      { side: 'xmas-car2', up: 'xmas-car2-up', down: 'xmas-car2-down' },
-    ];
+    const carDefs = ['train', 'car1', 'car2'].map((k) => ({ side: k, up: `${k}-up`, down: `${k}-down` }));
     const cars = carDefs.map((d) =>
-      this.add
-        .image(TRAIN.xStart * sx, TRAIN.yFront * sy, d.side)
-        .setOrigin(0.5, 1)
-        .setScale(sx * TRAIN.scale)
-        .setDepth(4.2)
-        .setVisible(false),
+      this.add.image(TRAIN.xStart * sx, TRAIN.yFront * sy, d.side).setOrigin(0.5, 1).setScale(sx * TRAIN.scale).setDepth(4.2).setVisible(false),
     );
+    const lampBulb = this.glow(0, 0, 24, 24, 4.26, 0.92, 'xmas-bulb', 0xfff4c2).setVisible(false);
+    const lampBeam = this.glow(0, 0, 160, 76, 4.24, 0.45).setVisible(false);
 
-    // Soft additive headlamp flare + directional track glow matching the cabin's dynamic lighting.
-    const lampBulb = this.add
-      .image(0, 0, 'xmas-bulb')
-      .setTint(0xfff4c2)
-      .setDisplaySize(24 * sx, 24 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(4.26)
-      .setAlpha(0.92)
-      .setVisible(false);
-    const lampBeam = this.add
-      .image(0, 0, 'xmas-light')
-      .setDisplaySize(160 * sx, 76 * sy)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(4.24)
-      .setAlpha(0.45)
-      .setVisible(false);
-
-    // Piecewise straight + R=32 quarter-circle arc path matching track.png pixel-for-pixel.
     const R = 32;
     const ARC = (Math.PI / 2) * R;
-    const S0 = TRAIN.xRight - R - TRAIN.xStart; // Front straight: xStart -> 886
-    const S1 = TRAIN.yFront - R - (TRAIN.yBack + R); // Right straight: 710 -> 644
-    const S2 = TRAIN.xRight - R - (TRAIN.xLeft + R); // Back straight: 886 -> 507
-    const S3 = S1; // Left straight: 644 -> 710
-    const S4 = TRAIN.xLeft - R - TRAIN.xStart; // Exit straight: 443 -> xStart
-    const totalLen = S0 + ARC + S1 + ARC + S2 + ARC + S3 + ARC + S4;
+    const S0 = TRAIN.xRight - R - TRAIN.xStart;
+    const S1 = TRAIN.yFront - R - (TRAIN.yBack + R);
+    const S2 = TRAIN.xRight - R - (TRAIN.xLeft + R);
+    const S4 = TRAIN.xLeft - R - TRAIN.xStart;
+    const totalLen = S0 + ARC + S1 + ARC + S2 + ARC + S1 + ARC + S4;
     const maxDist = totalLen + (cars.length - 1) * TRAIN.carGap;
 
-    const poseAt = (
-      d: number,
-    ): { x: number; y: number; dir: 'right' | 'up' | 'left' | 'down'; back: boolean } | null => {
+    const poseAt = (d: number): { x: number; y: number; dir: 'right' | 'up' | 'left' | 'down'; back: boolean } | null => {
       if (d < 0 || d > totalLen) return null;
       let u = d;
       if (u <= S0) return { x: TRAIN.xStart + u, y: TRAIN.yFront, dir: 'right', back: false };
       u -= S0;
       if (u <= ARC) {
         const a = Math.PI / 2 - (u / ARC) * (Math.PI / 2);
-        return {
-          x: TRAIN.xRight - R + Math.cos(a) * R,
-          y: TRAIN.yFront - R + Math.sin(a) * R,
-          dir: u < ARC * 0.55 ? 'right' : 'up',
-          back: false,
-        };
+        return { x: TRAIN.xRight - R + Math.cos(a) * R, y: TRAIN.yFront - R + Math.sin(a) * R, dir: u < ARC * 0.55 ? 'right' : 'up', back: false };
       }
       u -= ARC;
       if (u <= S1) return { x: TRAIN.xRight, y: TRAIN.yFront - R - u, dir: 'up', back: false };
       u -= S1;
       if (u <= ARC) {
         const a = -(u / ARC) * (Math.PI / 2);
-        return {
-          x: TRAIN.xRight - R + Math.cos(a) * R,
-          y: TRAIN.yBack + R + Math.sin(a) * R,
-          dir: u < ARC * 0.45 ? 'up' : 'left',
-          back: u >= ARC * 0.45,
-        };
+        return { x: TRAIN.xRight - R + Math.cos(a) * R, y: TRAIN.yBack + R + Math.sin(a) * R, dir: u < ARC * 0.45 ? 'up' : 'left', back: u >= ARC * 0.45 };
       }
       u -= ARC;
       if (u <= S2) return { x: TRAIN.xRight - R - u, y: TRAIN.yBack, dir: 'left', back: true };
       u -= S2;
       if (u <= ARC) {
         const a = -Math.PI / 2 - (u / ARC) * (Math.PI / 2);
-        return {
-          x: TRAIN.xLeft + R + Math.cos(a) * R,
-          y: TRAIN.yBack + R + Math.sin(a) * R,
-          dir: u < ARC * 0.45 ? 'left' : 'down',
-          back: u < ARC * 0.45,
-        };
+        return { x: TRAIN.xLeft + R + Math.cos(a) * R, y: TRAIN.yBack + R + Math.sin(a) * R, dir: u < ARC * 0.45 ? 'left' : 'down', back: u < ARC * 0.45 };
       }
       u -= ARC;
-      if (u <= S3) return { x: TRAIN.xLeft, y: TRAIN.yBack + R + u, dir: 'down', back: false };
-      u -= S3;
+      if (u <= S1) return { x: TRAIN.xLeft, y: TRAIN.yBack + R + u, dir: 'down', back: false };
+      u -= S1;
       if (u <= ARC) {
         const a = (u / ARC) * (Math.PI / 2);
-        return {
-          x: TRAIN.xLeft - R + Math.cos(a) * R,
-          y: TRAIN.yFront - R + Math.sin(a) * R,
-          dir: u < ARC * 0.45 ? 'down' : 'left',
-          back: false,
-        };
+        return { x: TRAIN.xLeft - R + Math.cos(a) * R, y: TRAIN.yFront - R + Math.sin(a) * R, dir: u < ARC * 0.45 ? 'down' : 'left', back: false };
       }
       u -= ARC;
       return { x: TRAIN.xLeft - R - u, y: TRAIN.yFront, dir: 'left', back: false };
@@ -1405,17 +1010,17 @@ export class Christmas2026Scene extends Phaser.Scene {
 
     let steamTimer: Phaser.Time.TimerEvent | undefined;
     let driveTween: Phaser.Tweens.Tween | undefined;
-
-    this.runTrain = () => {
-      this.quietElves();
-      driveTween?.stop();
+    const hideTrain = () => {
       steamTimer?.remove(false);
       lampBulb.setVisible(false);
       lampBeam.setVisible(false);
-      cars.forEach((c) => {
-        this.tweens.killTweensOf(c);
-        c.setVisible(false);
-      });
+      cars.forEach((c) => (this.tweens.killTweensOf(c), c.setVisible(false)));
+    };
+
+    this.runners.train = () => {
+      this.quietElves();
+      driveTween?.stop();
+      hideTrain();
 
       const loco = cars[0];
       steamTimer = this.time.addEvent({
@@ -1423,8 +1028,7 @@ export class Christmas2026Scene extends Phaser.Scene {
         loop: true,
         callback: () => {
           if (!loco.visible) return;
-          const isSide = loco.texture.key === 'xmas-train';
-          const dir = isSide ? (loco.flipX ? -1 : 1) : 0;
+          const dir = loco.texture.key === 'train' ? (loco.flipX ? -1 : 1) : 0;
           const puff = this.add
             .image(loco.x + dir * 14 * sx, loco.y - 48 * sy, 'xmas-steam')
             .setAlpha(0.85)
@@ -1447,86 +1051,293 @@ export class Christmas2026Scene extends Phaser.Scene {
       driveTween = this.tweens.add({
         targets: state,
         dist: maxDist,
-        duration: TRAIN.durationMs,
-        ease: 'Linear',
+        duration: TRAIN.ms,
         onUpdate: () => {
           const chug = 1 + Math.sin(this.time.now * 0.025) * 0.028;
+          const pulse = 0.92 + Math.sin(this.time.now * 0.015) * 0.08;
           cars.forEach((car, i) => {
             const p = poseAt(state.dist - i * TRAIN.carGap);
             if (!p) {
               car.setVisible(false);
-              if (i === 0) {
-                lampBulb.setVisible(false);
-                lampBeam.setVisible(false);
-              }
+              if (i === 0) lampBulb.setVisible(false), lampBeam.setVisible(false);
               return;
             }
             const def = carDefs[i];
-            const tex = p.dir === 'up' ? def.up : p.dir === 'down' ? def.down : def.side;
-            // Subtle perspective scale-down on the back pass behind Ace's bed.
             const persp = p.back ? 0.9 : 1;
             const depth = p.back ? 3.2 : 4.2 + p.y / 1000;
             car
               .setVisible(true)
-              .setTexture(tex)
+              .setTexture(p.dir === 'up' ? def.up : p.dir === 'down' ? def.down : def.side)
               .setFlipX(p.dir === 'left')
               .setScale(sx * TRAIN.scale * persp, sx * TRAIN.scale * persp * chug)
               .setDepth(depth)
               .setPosition(p.x * sx, p.y * sy);
 
-            if (i === 0) {
-              const pulse = 0.92 + Math.sin(this.time.now * 0.015) * 0.08;
-              if (p.dir === 'up') {
-                lampBulb.setVisible(false);
-                lampBeam
-                  .setVisible(true)
-                  .setDepth(depth - 0.02)
-                  .setPosition(p.x * sx, (p.y - 36) * sy)
-                  .setDisplaySize(86 * sx * persp, 64 * sy * persp)
-                  .setAlpha(0.28 * pulse);
-              } else if (p.dir === 'down') {
-                lampBulb
-                  .setVisible(true)
-                  .setDepth(depth + 0.03)
-                  .setPosition(p.x * sx, (p.y - 22) * sy)
-                  .setDisplaySize(22 * sx * persp * pulse, 22 * sy * persp * pulse)
-                  .setAlpha(0.88 * pulse);
-                lampBeam
-                  .setVisible(true)
-                  .setDepth(depth + 0.01)
-                  .setPosition(p.x * sx, (p.y + 18) * sy)
-                  .setDisplaySize(96 * sx * persp, 118 * sy * persp)
-                  .setAlpha(0.46 * pulse);
-              } else {
-                const sign = p.dir === 'right' ? 1 : -1;
-                lampBulb
-                  .setVisible(true)
-                  .setDepth(depth + 0.03)
-                  .setPosition((p.x + sign * 29 * persp) * sx, (p.y - 29 * persp) * sy)
-                  .setDisplaySize(24 * sx * persp * pulse, 24 * sy * persp * pulse)
-                  .setAlpha(0.9 * pulse);
-                lampBeam
-                  .setVisible(true)
-                  .setDepth(depth + 0.01)
-                  .setPosition((p.x + sign * 74 * persp) * sx, (p.y - 16 * persp) * sy)
-                  .setDisplaySize(160 * sx * persp, 72 * sy * persp)
-                  .setAlpha(0.46 * pulse);
-              }
+            if (i !== 0) return;
+            const sign = p.dir === 'right' ? 1 : -1;
+            const beam =
+              p.dir === 'up'
+                ? { dx: 0, dy: -36, w: 86, h: 64, a: 0.28, d: -0.02 }
+                : p.dir === 'down'
+                  ? { dx: 0, dy: 18, w: 96, h: 118, a: 0.46, d: 0.01 }
+                  : { dx: sign * 74 * persp, dy: -16 * persp, w: 160, h: 72, a: 0.46, d: 0.01 };
+            lampBeam
+              .setVisible(true)
+              .setDepth(depth + beam.d)
+              .setPosition((p.x + beam.dx) * sx, (p.y + beam.dy) * sy)
+              .setDisplaySize(beam.w * sx * persp, beam.h * sy * persp)
+              .setAlpha(beam.a * pulse);
+            if (p.dir === 'up') {
+              lampBulb.setVisible(false);
+            } else {
+              const bx = p.dir === 'down' ? p.x : p.x + sign * 29 * persp;
+              const by = p.dir === 'down' ? p.y - 22 : p.y - 29 * persp;
+              const bs = (p.dir === 'down' ? 22 : 24) * persp * pulse;
+              lampBulb.setVisible(true).setDepth(depth + 0.03).setPosition(bx * sx, by * sy).setDisplaySize(bs * sx, bs * sy).setAlpha(0.9 * pulse);
             }
           });
         },
         onComplete: () => {
-          steamTimer?.remove(false);
-          steamTimer = undefined;
-          lampBulb.setVisible(false);
-          lampBeam.setVisible(false);
-          cars.forEach((c) => {
-            this.tweens.killTweensOf(c);
-            c.setVisible(false);
-          });
+          hideTrain();
           this.freeElves();
         },
       });
+    };
+  }
+
+  /** Beat 5: Hearth goes out, Santa gets stuck kicking in the chimney, tugs back up, then magic relights the fire. */
+  private setupChimney(sx: number, sy: number): void {
+    const SANTA_X = 1220 * sx;
+    const S = 0.94;
+    const scaleX = sx * S;
+    const scaleY = sy * S;
+    const HIDDEN_Y = 184 * sy;
+    const PEEK_Y = 248 * sy;
+    const STUCK_Y = 326 * sy;
+    const LEG_Y = 74 * scaleY;
+    const NIGHT_TINT = 0xc6c0cc;
+
+    const part = (x: number, y: number, ox: number, oy: number, cx: number, cy: number, cw: number, ch: number) =>
+      this.add
+        .image(x, y, 'santa-chimney')
+        .setOrigin(ox, oy)
+        .setScale(scaleX, scaleY)
+        .setTint(NIGHT_TINT)
+        .setCrop(cx, cy, cw, ch);
+
+    const legL = part(-20 * scaleX, LEG_Y, 34 / 108, 74 / 160, 0, 70, 54, 90);
+    const legR = part(20 * scaleX, LEG_Y, 74 / 108, 74 / 160, 54, 70, 54, 90);
+    const torso = part(0, 0, 0.5, 0, 0, 0, 108, 78);
+    const santaRig = this.add.container(SANTA_X, HIDDEN_Y, [legL, legR, torso]).setDepth(2.08).setVisible(false);
+    const flash = this.glow(1238, 502, 240, 220, 2.11, 0, 'xmas-light', 0xffe082).setVisible(false);
+
+    const dropSoot = (count: number, magic = false) => {
+      for (let i = 0; i < count; i++) {
+        const px = Phaser.Math.Between(1184, 1264) * sx;
+        const p =
+          magic && i % 2 === 0
+            ? this.add
+                .image(px, 354 * sy, 'xmas-sparkle')
+                .setTint(0xffe878)
+                .setBlendMode(Phaser.BlendModes.ADD)
+                .setScale(sx * Phaser.Math.FloatBetween(0.28, 0.46))
+                .setAlpha(0.8)
+                .setDepth(2.1)
+            : this.add.rectangle(px, 354 * sy, 3 * sx, 3 * sy, 0x2a201c, 0.85).setDepth(2.1);
+        this.tweens.add({
+          targets: p,
+          x: p.x + Phaser.Math.Between(-18, 18) * sx,
+          y: p.y + Phaser.Math.Between(70, 145) * sy,
+          alpha: 0,
+          duration: Phaser.Math.Between(750, 1300),
+          delay: i * 65,
+          ease: 'Quad.easeIn',
+          onComplete: () => p.destroy(),
+        });
+      }
+    };
+
+    const smokePuff = () => {
+      for (let i = 0; i < 4; i++) {
+        const puff = this.add
+          .image(Phaser.Math.Between(1214, 1262) * sx, 514 * sy, 'xmas-steam')
+          .setTint(0xc8c0b8)
+          .setScale(sx * 0.9)
+          .setAlpha(0.55)
+          .setDepth(2.1);
+        this.tweens.add({
+          targets: puff,
+          x: puff.x + Phaser.Math.Between(-14, 14) * sx,
+          y: puff.y - Phaser.Math.Between(42, 76) * sy,
+          scale: sx * 2.0,
+          alpha: 0,
+          duration: Phaser.Math.Between(950, 1400),
+          delay: i * 110,
+          ease: 'Sine.easeOut',
+          onComplete: () => puff.destroy(),
+        });
+      }
+    };
+
+    const resetLegs = () => {
+      this.tweens.killTweensOf(legL);
+      this.tweens.killTweensOf(legR);
+      legL.setAngle(0).setY(LEG_Y);
+      legR.setAngle(0).setY(LEG_Y);
+    };
+
+    const kickLegs = (degOut: number, degIn: number, dur: number, repeats: number) => {
+      resetLegs();
+      for (const [leg, from, to, delay] of [
+        [legL, degOut, -degIn, 0],
+        [legR, degIn, -degOut, Math.round(dur * 0.45)],
+      ] as const) {
+        this.tweens.add({
+          targets: leg,
+          angle: { from, to },
+          y: LEG_Y - 5 * sy,
+          duration: dur,
+          delay,
+          yoyo: true,
+          repeat: repeats,
+          ease: 'Sine.easeInOut',
+          onComplete: () => leg.setAngle(0).setY(LEG_Y),
+        });
+      }
+    };
+
+    let timers: Phaser.Time.TimerEvent[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(this.time.delayedCall(ms, fn));
+
+    const magicRelight = () => {
+      const cx = 1236 * sx;
+      const tints = [0xffe878, 0xfff8d6, 0xd8f0ff];
+      for (let i = 0; i < 12; i++) {
+        const mote = this.add
+          .image(cx, 355 * sy, 'xmas-sparkle')
+          .setTint(tints[i % tints.length])
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setScale(sx * Phaser.Math.FloatBetween(0.32, 0.54))
+          .setAlpha(0)
+          .setDepth(2.11);
+        const st = { t: 0 };
+        const phase = i * 0.85;
+        this.tweens.add({
+          targets: st,
+          t: 1,
+          duration: 850,
+          delay: i * 55,
+          ease: 'Quad.easeIn',
+          onUpdate: () => {
+            const r = (1 - st.t) * 26 * sx;
+            const ang = phase + st.t * Math.PI * 3;
+            mote
+              .setPosition(cx + Math.cos(ang) * r, (355 + st.t * 158) * sy)
+              .setAngle(st.t * 180)
+              .setAlpha(st.t < 0.15 ? st.t / 0.15 : 0.92 * (1 - st.t * 0.35));
+          },
+          onComplete: () => mote.destroy(),
+        });
+      }
+
+      at(900, () => {
+        const star = this.add
+          .image(cx, 514 * sy, 'xmas-sparkle')
+          .setTint(0xfff4b8)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setScale(sx * 0.4)
+          .setDepth(2.13);
+        this.tweens.add({ targets: star, scale: sx * 2.8, angle: 90, alpha: 0, duration: 620, ease: 'Cubic.easeOut', onComplete: () => star.destroy() });
+
+        flash.setVisible(true).setAlpha(0.95);
+        this.tweens.add({ targets: flash, alpha: 0, duration: 750, ease: 'Quad.easeOut', onComplete: () => flash.setVisible(false) });
+        this.setFire(1, 560);
+
+        for (let i = 0; i < 8; i++) {
+          const sp = this.add
+            .image(cx + Phaser.Math.Between(-24, 24) * sx, 516 * sy, 'xmas-sparkle')
+            .setTint(i % 2 === 0 ? 0xffe878 : 0xfff6d2)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setScale(sx * Phaser.Math.FloatBetween(0.28, 0.48))
+            .setAlpha(0.9)
+            .setDepth(2.13);
+          this.tweens.add({
+            targets: sp,
+            x: sp.x + Phaser.Math.Between(-16, 16) * sx,
+            y: sp.y - Phaser.Math.Between(60, 115) * sy,
+            angle: Phaser.Math.Between(-90, 90),
+            alpha: 0,
+            duration: Phaser.Math.Between(800, 1300),
+            delay: i * 50,
+            ease: 'Sine.easeOut',
+            onComplete: () => sp.destroy(),
+          });
+        }
+      });
+    };
+
+    this.runners.chimney = () => {
+      for (const t of timers) t.remove(false);
+      timers = [];
+      this.tweens.killTweensOf(santaRig);
+      this.tweens.killTweensOf(flash);
+      resetLegs();
+      santaRig.setVisible(false).setPosition(SANTA_X, HIDDEN_Y).setAngle(0);
+      flash.setVisible(false).setAlpha(0);
+      this.quietElves();
+
+      this.setFire(0, 1400);
+      smokePuff();
+      at(3400, () => dropSoot(6, true));
+      at(4100, () => {
+        santaRig.setVisible(true).setPosition(SANTA_X, HIDDEN_Y).setAngle(0);
+        dropSoot(5);
+        this.tweens.add({ targets: santaRig, y: PEEK_Y, duration: 650, ease: 'Sine.easeOut', onComplete: () => kickLegs(14, 8, 220, 1) });
+      });
+      at(5450, () => {
+        dropSoot(7);
+        this.tweens.add({ targets: santaRig, y: STUCK_Y, duration: 750, ease: 'Back.easeOut' });
+      });
+      at(6700, () => {
+        dropSoot(6, true);
+        kickLegs(22, 10, 230, 2);
+        this.tweens.add({
+          targets: santaRig,
+          angle: { from: -3, to: 3 },
+          duration: 260,
+          yoyo: true,
+          repeat: 2,
+          ease: 'Sine.easeInOut',
+          onComplete: () => santaRig.setAngle(0),
+        });
+      });
+      at(8600, () => {
+        dropSoot(8, true);
+        kickLegs(26, 12, 190, 3);
+        this.tweens.add({ targets: santaRig, y: STUCK_Y - 14 * sy, duration: 420, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
+      });
+      at(10800, () => {
+        dropSoot(5);
+        kickLegs(18, 10, 180, 1);
+        this.tweens.add({ targets: santaRig, y: PEEK_Y + 8 * sy, duration: 480, ease: 'Quad.easeOut' });
+      });
+      at(11550, () => {
+        this.tweens.killTweensOf(santaRig);
+        resetLegs();
+        santaRig.setAngle(0);
+        this.tweens.add({
+          targets: santaRig,
+          y: HIDDEN_Y,
+          duration: 580,
+          ease: 'Back.easeIn',
+          onComplete: () => {
+            santaRig.setVisible(false);
+            dropSoot(6, true);
+          },
+        });
+      });
+      at(13600, magicRelight);
+      at(15600, () => this.freeElves());
     };
   }
 
@@ -1536,7 +1347,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     if (this.skipBeat) this.skipBeat = false;
     else {
       const hit = crossedBeat(prev, this.storyMs, BEAT_MS);
-      if (hit >= 0) this.playBeat(BEATS[hit].who);
+      if (hit >= 0) this.runners[BEATS[hit].who]();
     }
 
     const vis = delta / 1000;
@@ -1544,10 +1355,10 @@ export class Christmas2026Scene extends Phaser.Scene {
     const rise = (20 * PLATE_H) / 270;
     for (const z of this.zzz) {
       z.t = (z.t + vis * 0.16) % 1;
-      const t = z.t;
-      z.g.setPosition(this.snout.x + Math.sin(t * Math.PI * 2) * driftX, this.snout.y - t * rise);
-      z.g.setAlpha(t < 0.1 ? t / 0.1 : 0.95 * (1 - (t - 0.1) / 0.9));
-      z.g.setScale(0.85 + t * 0.45);
+      z.g
+        .setPosition(this.snout.x + Math.sin(z.t * Math.PI * 2) * driftX, this.snout.y - z.t * rise)
+        .setAlpha(z.t < 0.1 ? z.t / 0.1 : 0.95 * (1 - (z.t - 0.1) / 0.9))
+        .setScale(0.85 + z.t * 0.45);
     }
 
     for (let i = 0; i < this.snow.length; i++) {
@@ -1555,9 +1366,14 @@ export class Christmas2026Scene extends Phaser.Scene {
       const wobble = Math.sin((f.sprite.y / this.sy) * 0.09 + f.phase) * 5;
       f.sprite.x += vis * this.sx * (OUTSIDE.wind + wobble);
       f.sprite.y += vis * this.sy * f.speed;
-      if (f.sprite.y / this.sy >= OUTSIDE.y1 || f.sprite.x / this.sx > OUTSIDE.x1) {
-        this.resetFlake(i, false);
-      }
+      if (f.sprite.y / this.sy >= OUTSIDE.y1 || f.sprite.x / this.sx > OUTSIDE.x1) this.resetFlake(i, false);
+    }
+
+    for (const m of this.motes) {
+      m.phase += vis * m.speed;
+      m.sprite
+        .setPosition(m.x0 + Math.sin(m.phase) * m.ampX, m.y0 + Math.cos(m.phase * 0.7) * m.ampY)
+        .setAlpha(m.maxAlpha * (0.5 + 0.5 * Math.sin(m.phase * 1.3)));
     }
 
     this.clock.setText(`christmas-2026 ${formatTime(this.storyMs)} x${this.speed}`);
