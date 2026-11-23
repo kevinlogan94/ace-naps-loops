@@ -19,16 +19,26 @@ const IMAGES: [string, string][] = [
 
 /** Outdoor window bounds (masked automatically by cabin-interior at depth 1.8). */
 const OUTSIDE = { x0: 378, x1: 996, y0: 64, y1: 442, wind: 3 };
-const SNOW_COUNT = 36;
+const SNOW_COUNT = 40;
 
 const CANDLES = [
   { x: 1106, y: 170, s: 0.9 },
   { x: 1131, y: 158, s: 1.05 },
 ] as const;
 
+const MANTEL_LIGHTS: [number, number][] = [
+  [1188, 22], [1196, 68], [1234, 84], [1276, 62], [1282, 20],
+  [1076, 202], [1162, 183], [1194, 175], [1238, 165], [1280, 152],
+];
+
 const SKY_STARS: [number, number][] = [
   [408, 118], [470, 146], [564, 122], [596, 178], [632, 112], [654, 214], [688, 152],
   [712, 232], [766, 224], [808, 186], [820, 118], [898, 134], [962, 116], [974, 170],
+];
+
+const SNOW_GLINTS: [number, number][] = [
+  [464, 342], [484, 360], [476, 390], [548, 318], [562, 412],
+  [612, 408], [660, 405], [896, 342], [920, 366], [938, 418],
 ];
 
 const TREE_STAR = { x: 168, y: 34 };
@@ -97,7 +107,7 @@ const BEAT_MS = BEATS.map((b) => b.sec * 1000);
 export class Christmas2026Scene extends Phaser.Scene {
   private sx = 1;
   private sy = 1;
-  private snow: { sprite: Phaser.GameObjects.Image; speed: number; phase: number }[] = [];
+  private snow: { sprite: Phaser.GameObjects.Image; speed: number; phase: number; windMul: number }[] = [];
   private motes: {
     sprite: Phaser.GameObjects.Image;
     x0: number;
@@ -110,8 +120,9 @@ export class Christmas2026Scene extends Phaser.Scene {
   }[] = [];
   private elves: Elf[] = [];
   private elfTurn = 0;
-  private elfHolds = 0;
+  private elfHolds = new Set<string>();
   private elfDue = false;
+  private aceWiggling = false;
   private zzz: { g: Phaser.GameObjects.Text; t: number }[] = [];
   private snout = { x: 0, y: 0 };
   private storyMs = 0;
@@ -190,6 +201,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     const ace = this.add.image(BED.x * sx, BED.y * sy, 'ace').setOrigin(0.5, 0.78).setScale(ACE_SCALE).setDepth(3.7);
     this.lit.ace = ace;
     this.pulse(ace, { scaleY: ACE_SCALE * 1.035 }, 1600);
+    this.time.addEvent({ delay: 38_000, loop: true, callback: () => this.wiggleAce(1) });
     this.snout = {
       x: ace.x + (0.38 - 0.5) * ace.width * ACE_SCALE,
       y: ace.y - 0.78 * ace.height * ACE_SCALE,
@@ -259,6 +271,27 @@ export class Christmas2026Scene extends Phaser.Scene {
   /** Infinite Sine.easeInOut yoyo tween helper. */
   private pulse(targets: object, props: Record<string, unknown>, duration: number, delay = 0): Phaser.Tweens.Tween {
     return this.tweens.add({ targets, ...props, duration, delay, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
+
+  /** Rare, gentle sleepy shift on Ace (leaves breathing scaleY tween untouched). */
+  private wiggleAce(strength = 1): void {
+    const ace = this.lit.ace;
+    if (!ace || this.aceWiggling) return;
+    this.aceWiggling = true;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    this.tweens.add({
+      targets: ace,
+      angle: dir * 1.5 * strength,
+      scaleX: ACE_SCALE * (1 + 0.022 * strength),
+      duration: 520,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        ace.setAngle(0).setScale(ACE_SCALE, ace.scaleY);
+        this.aceWiggling = false;
+      },
+    });
   }
 
   private makeTextures(): void {
@@ -429,6 +462,17 @@ export class Christmas2026Scene extends Phaser.Scene {
       this.pulse(star, { alpha: 0.95, scaleX: 1.4, scaleY: 1.4 }, 1100 + (i % 5) * 340, (i * 270) % 1800);
     });
 
+    SNOW_GLINTS.forEach(([x, y], i) => {
+      const glint = this.add
+        .image(x * sx, y * sy, 'xmas-sparkle')
+        .setTint(i % 2 === 0 ? 0xdcf0ff : 0xf4f9ff)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(sx * (0.16 + (i % 3) * 0.04))
+        .setAlpha(0)
+        .setDepth(0.55);
+      this.pulse(glint, { alpha: 0.58 + (i % 3) * 0.08, angle: 35 }, 2200 + (i % 4) * 520, (i * 490) % 2600);
+    });
+
     for (const p of [
       { x: 750, y: 148, w: 280, h: 280, depth: 0.4, a0: 0.34, a1: 0.5, dur: 3800 },
       { x: 688, y: 454, w: 580, h: 220, depth: 2.0, a0: 0.24, a1: 0.34, dur: 4200 },
@@ -468,12 +512,30 @@ export class Christmas2026Scene extends Phaser.Scene {
       const flame = this.add.image(c.x * sx, c.y * sy, 'xmas-candle').setOrigin(0.5, 1).setScale(sx * c.s).setDepth(2.26);
       this.pulse(flame, { scaleX: sx * c.s * 0.85, scaleY: sx * c.s * 1.22, angle: i === 0 ? 5 : -5 }, 180 + i * 55);
     });
+
+    const mantelTints = [0xffe08a, 0xffc864, 0xfff0b8];
+    MANTEL_LIGHTS.forEach(([lx, ly], i) => {
+      const maxW = (10 + (i % 3) * 1.5) * sx;
+      const bulb = this.glow(lx, ly, 6, 6, 2.21, 0.06, 'xmas-bulb', mantelTints[i % mantelTints.length]);
+      this.pulse(bulb, { alpha: 0.52, displayWidth: maxW, displayHeight: maxW }, 1100 + (i % 5) * 240, (i * 310) % 1900);
+    });
   }
 
   private spawnSnow(): void {
+    const farCount = Math.round(SNOW_COUNT * 0.55);
     for (let i = 0; i < SNOW_COUNT; i++) {
-      const sprite = this.add.image(0, 0, 'xmas-flake').setDepth(1).setAlpha(0.85).setScale(1.2 + (i % 3) * 0.45);
-      this.snow.push({ sprite, speed: 14 + (i % 5) * 3, phase: i * 1.7 });
+      const near = i >= farCount;
+      const sprite = this.add
+        .image(0, 0, 'xmas-flake')
+        .setDepth(near ? 1.62 : 0.8)
+        .setAlpha(near ? 0.88 : 0.48)
+        .setScale(near ? 1.25 + (i % 3) * 0.4 : 0.75 + (i % 3) * 0.2);
+      this.snow.push({
+        sprite,
+        speed: near ? 16 + (i % 5) * 3 : 8 + (i % 4) * 2,
+        phase: i * 1.7,
+        windMul: near ? 1 : 0.6,
+      });
       this.resetFlake(i, true);
     }
   }
@@ -653,17 +715,17 @@ export class Christmas2026Scene extends Phaser.Scene {
     this.time.addEvent({ delay: ELF_GAP, loop: true, callback: () => this.nextElf() });
   }
 
-  private quietElves(): void {
-    this.elfHolds++;
+  private quietElves(who: string): void {
+    this.elfHolds.add(who);
     for (const elf of this.elves) this.tuckElf(elf);
   }
 
-  private freeElves(): void {
-    if (this.elfHolds > 0 && --this.elfHolds === 0 && this.elfDue) this.nextElf();
+  private freeElves(who: string): void {
+    if (this.elfHolds.delete(who) && this.elfHolds.size === 0 && this.elfDue) this.nextElf();
   }
 
   private nextElf(): void {
-    if (this.elfHolds > 0) {
+    if (this.elfHolds.size > 0) {
       this.elfDue = true;
       return;
     }
@@ -747,9 +809,9 @@ export class Christmas2026Scene extends Phaser.Scene {
   private hideElf(elf: Elf): void {
     elf.mood = 'hide';
     elf.sprite.setDepth(3.0);
-    if (this.elfHolds > 0) return;
+    if (this.elfHolds.size > 0) return;
     this.time.delayedCall(Phaser.Math.Between(1400, 2400), () => {
-      if (this.elfHolds > 0 || elf.mood !== 'hide') return;
+      if (this.elfHolds.size > 0 || elf.mood !== 'hide') return;
       elf.mood = 'peek';
       elf.sprite.setDepth(3.0).setAngle(0).setFlipX(elf.hide[0] > BED.x);
       this.tweens.add({
@@ -759,9 +821,9 @@ export class Christmas2026Scene extends Phaser.Scene {
         duration: Phaser.Math.Between(280, 420),
         ease: 'Sine.easeOut',
         onComplete: () => {
-          if (this.elfHolds > 0) return this.tuckElf(elf);
+          if (this.elfHolds.size > 0) return this.tuckElf(elf);
           this.time.delayedCall(Phaser.Math.Between(850, 1250), () => {
-            if (this.elfHolds > 0) return this.tuckElf(elf);
+            if (this.elfHolds.size > 0) return this.tuckElf(elf);
             elf.mood = 'hide';
             this.tweens.add({
               targets: elf.sprite,
@@ -770,7 +832,7 @@ export class Christmas2026Scene extends Phaser.Scene {
               duration: Phaser.Math.Between(140, 200),
               ease: 'Quad.easeIn',
               onComplete: () => {
-                if (elf.step === elf.points.length - 1 || this.elfHolds > 0) return;
+                if (elf.step === elf.points.length - 1 || this.elfHolds.size > 0) return;
                 this.time.delayedCall(Phaser.Math.Between(400, 800), () => this.creepElf(elf));
               },
             });
@@ -781,7 +843,7 @@ export class Christmas2026Scene extends Phaser.Scene {
   }
 
   private creepElf(elf: Elf): void {
-    if (this.elfHolds > 0) return;
+    if (this.elfHolds.size > 0) return;
     elf.mood = 'creep';
     elf.step = (elf.step + 1) % elf.points.length;
     const [nx, ny] = elf.points[elf.step];
@@ -797,7 +859,7 @@ export class Christmas2026Scene extends Phaser.Scene {
       duration: 200,
       ease: 'Quad.easeOut',
       onComplete: () => {
-        if (this.elfHolds > 0) return this.tuckElf(elf);
+        if (this.elfHolds.size > 0) return this.tuckElf(elf);
         elf.sprite.setDepth(3.55);
         this.tweens.add({
           targets: elf.sprite,
@@ -961,9 +1023,9 @@ export class Christmas2026Scene extends Phaser.Scene {
       bobAng: 3,
       bobDur: 280,
       flipIn: true,
-      onStart: () => this.quietElves(),
+      onStart: () => this.quietElves('grinch'),
       onArrive: (body) => this.pulse(body, { angle: 4 }, 900),
-      onDone: () => this.freeElves(),
+      onDone: () => this.freeElves('grinch'),
     });
   }
 
@@ -1031,7 +1093,7 @@ export class Christmas2026Scene extends Phaser.Scene {
     };
 
     this.runners.train = () => {
-      this.quietElves();
+      this.quietElves('train');
       driveTween?.stop();
       hideTrain();
 
@@ -1114,7 +1176,7 @@ export class Christmas2026Scene extends Phaser.Scene {
         },
         onComplete: () => {
           hideTrain();
-          this.freeElves();
+          this.freeElves('train');
         },
       });
     };
@@ -1122,15 +1184,23 @@ export class Christmas2026Scene extends Phaser.Scene {
 
   /** Beat 5: Hearth goes out, Santa gets stuck kicking in the chimney, tugs back up, then magic relights the fire. */
   private setupChimney(sx: number, sy: number): void {
-    const SANTA_X = 1220 * sx;
-    const S = 0.94;
+    const SANTA_X = 1216 * sx;
+    const S = 1.38;
     const scaleX = sx * S;
     const scaleY = sy * S;
-    const HIDDEN_Y = 184 * sy;
-    const PEEK_Y = 244 * sy;
-    const STUCK_Y = 308 * sy;
+    const HIDDEN_Y = 112 * sy;
+    const PEEK_Y = 226 * sy;
+    const STUCK_Y = 290 * sy;
     const LEG_Y = 74 * scaleY;
     const NIGHT_TINT = 0x9c98aa;
+
+    // Mask the upper chimney above hearth-frame (y < 195) so larger Santa stays hidden when sliding up/down.
+    this.add
+      .image(0, 0, 'cabin-interior')
+      .setOrigin(0)
+      .setDisplaySize(PLATE_W, PLATE_H)
+      .setCrop(1100, 0, 276, 210)
+      .setDepth(2.14);
 
     const part = (x: number, y: number, ox: number, oy: number, cx: number, cy: number, cw: number, ch: number) =>
       this.add
@@ -1269,6 +1339,7 @@ export class Christmas2026Scene extends Phaser.Scene {
         this.fx.flash = 1;
         this.tweens.add({ targets: this.fx, flash: 0, duration: 750, ease: 'Quad.easeOut' });
         this.setFire(1, 560);
+        this.wiggleAce(0.8);
 
         for (let i = 0; i < 8; i++) {
           const sp = this.add
@@ -1301,7 +1372,7 @@ export class Christmas2026Scene extends Phaser.Scene {
       resetLegs();
       santaRig.setVisible(false).setPosition(SANTA_X, HIDDEN_Y).setAngle(0);
       flash.setVisible(false).setAlpha(0);
-      this.quietElves();
+      this.quietElves('chimney');
 
       this.setFire(0, 1400);
       smokePuff();
@@ -1354,7 +1425,7 @@ export class Christmas2026Scene extends Phaser.Scene {
         });
       });
       at(13600, magicRelight);
-      at(15600, () => this.freeElves());
+      at(15600, () => this.freeElves('chimney'));
     };
   }
 
@@ -1467,8 +1538,8 @@ export class Christmas2026Scene extends Phaser.Scene {
 
     for (let i = 0; i < this.snow.length; i++) {
       const f = this.snow[i];
-      const wobble = Math.sin((f.sprite.y / this.sy) * 0.09 + f.phase) * 5;
-      f.sprite.x += vis * this.sx * (OUTSIDE.wind + wobble);
+      const wobble = Math.sin((f.sprite.y / this.sy) * 0.09 + f.phase) * 5 * f.windMul;
+      f.sprite.x += vis * this.sx * (OUTSIDE.wind * f.windMul + wobble);
       f.sprite.y += vis * this.sy * f.speed;
       if (f.sprite.y / this.sy >= OUTSIDE.y1 || f.sprite.x / this.sx > OUTSIDE.x1) this.resetFlake(i, false);
     }
